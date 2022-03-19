@@ -9,6 +9,8 @@
 
 
 ## 使用例
+[pax.deno.dev](https://pax.deno.dev/) を利用し、Github からインポートする際の url の短縮化をしている
+
 ```typescript
 import { Client } from "https://deno.land/x/notion_sdk/src/mod.ts";
 
