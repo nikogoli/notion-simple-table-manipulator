@@ -12,17 +12,18 @@
 [pax.deno.dev](https://pax.deno.dev/) を利用し、Github からインポートする際の url の短縮化をしている
 
 ```typescript
-import { Client } from "https://deno.land/x/notion_sdk/src/mod.ts";
+import { Client } from "https://deno.land/x/notion_sdk/src/mod.ts"
 
 import { SeparateInfo} from "https://pax.deno.dev/nikogoli/notion-simple-table-manipulator/mod.ts"
 import { table_separation} from "https://pax.deno.dev/nikogoli/notion-simple-table-manipulator/Manipulations.ts"
 
 
-const NOTION_TOKEN = "~~~~";
-const notion = new Client({auth: NOTION_TOKEN});
+const NOTION_TOKEN = "~~~~"
+const notion = new Client({auth: NOTION_TOKEN})
 
-// テーブルが入った親要素のリンク
-const target_url = "https://www.notion.so/---ページのid---#---親要素のid---";
+// テーブルが入った親要素のリンク あるいは親要素のid
+const target_url = "---親要素のid---"
+// const target_url = "https://www.notion.so/---ページのid---#---親要素のid---"
 
 // 分割の設定
 const separate_option: SeparateInfo = {
