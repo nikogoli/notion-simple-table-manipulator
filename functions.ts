@@ -360,7 +360,7 @@ export function separate_table(
 
 // タイプ + テキスト → セルの内容として使える rich text object あるいは空行列
 // 現状では、"text" と "equation" のみに対応し、"mention" は未対応
-function set_celldata_obj(type:"text"|"equation", text:string) : Array<RichTextItemResponse> | []{
+export function set_celldata_obj(type:"text"|"equation", text:string) : Array<RichTextItemResponse> | []{
     if (text) {
         if (type=="equation") {
             return [{
