@@ -95,7 +95,7 @@ export async function change_maxmin_colored(
         const default_rowidx = (response.header_info_list[0][0]) ? 1 : 0
         const default_colidx = (response.header_info_list[0][1]) ? 1 : 0
 
-        // テーブル(の行データ)を転置する
+        // テーブルの各行・列について、指定に応じて色を付ける
         const table_rows = change_text_color(options, default_rowidx, default_colidx, org_rowobjs_list)
 
         // 更新した行データから、table block object を作成する
