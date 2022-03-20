@@ -1,12 +1,14 @@
 import { Client } from "https://deno.land/x/notion_sdk/src/mod.ts";
 
 import { 
+    ApiColor,
     BlockObjectResponse,
     PartialBlockObjectResponse,
 } from "https://deno.land/x/notion_sdk/src/api-endpoints.ts"
 
 import {
     CellObject,
+    ColorInfo,
     SeparateInfo,
     SortInfo,
     TableRowBlockObject,
@@ -43,6 +45,45 @@ function create_cel_matrix(
         )
     }
     return mat
+}
+
+
+// 最大値・最小値のセルに色付け
+// 色付け設定 + 色付け対象の先頭行・列のインデックス + 行基準の table row block のリスト → セル内のテキストを色付けした table row block のリスト
+export function change_text_color (
+    color_info: ColorInfo,
+    default_rowidx: number,
+    default_colidx: number,
+    table_rows: Array<TableRowBlockObject>
+    ) : Array<TableRowBlockObject> {
+
+    const arranged_mat = create_cel_matrix(color_info.direction, table_rows, default_rowidx, default_colidx)
+
+    if (color_info.max!="" || color_info.min!=""){
+        arranged_mat.forEach( (targets) => {
+            // 評価対象のセルを並び替え、先頭と末尾のテキストを取得し、それと値が等しいセルを取得する (同じ値のセルが複数ある場合に対応)
+            const sorted = targets.sort((a,b) => Number(a.text)-Number(b.text))
+            const [min_tx, max_tx] = [sorted[0].text, sorted[sorted.length-1].text]            
+            const min_cells = targets.filter(item => item.text==min_tx)
+            const max_cells = targets.filter(item => item.text==max_tx)
+
+            if (color_info.max!=""){
+                max_cells.forEach(c => {
+                    if (c.cell.length) {
+                        table_rows[c.r_idx].table_row.cells[c.c_idx].forEach(c => c.annotations.color= color_info.max as ApiColor)
+                    }
+                })
+            }
+            if (color_info.min!="") {
+                min_cells.forEach(c => {
+                    if (c.cell.length) {
+                        table_rows[c.r_idx].table_row.cells[c.c_idx].forEach(c => c.annotations.color= color_info.min as ApiColor)
+                    }
+                })
+            }
+        })
+    }
+    return table_rows
 }
 
 

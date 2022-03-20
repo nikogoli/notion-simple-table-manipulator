@@ -1,4 +1,5 @@
 import { 
+    ApiColor,
     RichTextItemResponse
 } from "https://deno.land/x/notion_sdk/src/api-endpoints.ts"
 
@@ -10,6 +11,16 @@ export interface CellObject {
     c_idx: number
     text : string
 }
+
+
+// テキストの色変更の設定をまとめたもの
+export interface ColorInfo {
+    direction : "R" | "C"
+    max?: ApiColor | ""
+    min?: ApiColor | ""
+}
+
+
 // テーブル分割の設定をまとめたもの
 export type SeparateInfo = {
     factory: {
