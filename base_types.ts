@@ -4,6 +4,15 @@ import {
 } from "https://deno.land/x/notion_sdk/src/api-endpoints.ts"
 
 
+// 数式命令
+type FormulaCall = "R_SUM" | "R_AVERAGE" | "R_COUNT" |
+                    "R_MAX" | "R_SECONDMAX" | "R_MAXNAME" | "R_SECONDMAXNAME" |
+                    "R_MIN" | "R_SECONDMIN" | "R_MINNAME" | "R_SECONDMINNAME" |
+                    "C_SUM" | "C_AVERAGE" | "C_COUNT" |
+                    "C_MAX" | "C_SECONDMAX" | "C_MAXNAME" | "C_SECONDMAXNAME" |
+                    "C_MIN" | "C_SECONDMIN" | "C_MINNAME" | "C_SECONDMINNAME"
+
+
 // セルの中身・セルの行・列インデックス・セルの plain_text をセットにしたもの
 export interface CellObject {
     cell: Array<RichTextItemResponse>|[]
@@ -23,7 +32,7 @@ export interface ColorInfo {
 
 // 一様な数式行・列の追加の設定をまとまるもの (暫定)
 export interface FormulaInfo {
-    formula_list: Array<{"formula":string, "label":string}>
+    formula_list: Array<{"formula":FormulaCall, "label":string}>
 }
 
 
