@@ -60,10 +60,11 @@ export async function table_separation (
 }
 
 
-// テーブル転置
-export async function table_transposation(
+// テーブル並び替え
+export async function table_sorting(
     notion: Client,
     url: string,
+    options: SortInfo,
     inspect = false
     ): Promise<AppendBlockChildrenResponse> {
 
@@ -73,11 +74,11 @@ export async function table_transposation(
         // 行データから必要な情報を取り出す
         const org_rowobjs_list: Array<TableRowBlockObject> = response.rowobjs_lists[0]
 
+            // 比較範囲からラベルを排除するため、デフォルト開始セルをヘッダーの有無に合わせて設定
+        const default_rowidx = (response.header_info_list[0][0]) ? 1 : 0
+
         // テーブル(の行データ)を転置する
-        const table_rows = [...Array(response.table_width_list[0])].map( (_x, idx) => {
-            const new_cells = org_rowobjs_list.map( row => row.table_row.cells[idx] )
-            return {"object":"block", "type":"table_row", "table_row":{"cells": new_cells}}
-        } )
+        const table_rows = sort_tablerows_by_col(options, default_rowidx, org_rowobjs_list)
 
         // 更新した行データから、table block object を作成する
         const table_props = { "object": 'block', "type": "table", "has_children": true,
@@ -102,11 +103,10 @@ export async function table_transposation(
 }
 
 
-// テーブル並び替え
-export async function table_sorting(
+// テーブル転置
+export async function table_transposation(
     notion: Client,
     url: string,
-    options: SortInfo,
     inspect = false
     ): Promise<AppendBlockChildrenResponse> {
 
@@ -116,11 +116,11 @@ export async function table_sorting(
         // 行データから必要な情報を取り出す
         const org_rowobjs_list: Array<TableRowBlockObject> = response.rowobjs_lists[0]
 
-            // 比較範囲からラベルを排除するため、デフォルト開始セルをヘッダーの有無に合わせて設定
-        const default_rowidx = (response.header_info_list[0][0]) ? 1 : 0
-
         // テーブル(の行データ)を転置する
-        const table_rows = sort_tablerows_by_col(options, default_rowidx, org_rowobjs_list)
+        const table_rows = [...Array(response.table_width_list[0])].map( (_x, idx) => {
+            const new_cells = org_rowobjs_list.map( row => row.table_row.cells[idx] )
+            return {"object":"block", "type":"table_row", "table_row":{"cells": new_cells}}
+        } )
 
         // 更新した行データから、table block object を作成する
         const table_props = { "object": 'block', "type": "table", "has_children": true,
