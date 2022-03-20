@@ -4,6 +4,7 @@ import { BlockObjectRequest,
 
 import {
     ColorInfo,
+    FormulaInfo,
     NumberingInfo,
     SeparateInfo,
     SortInfo,
@@ -11,12 +12,63 @@ import {
 } from "./base_types.ts"
 
 import {
+    add_formula_to_table,
     add_row_number,
+    formula_check,
     change_text_color,
     get_tables_and_rows,
     separate_table,
     sort_tablerows_by_col,
 } from "./functions.ts"
+
+
+// 各行・列に対して一様に数式評価を行う行・列を追加する
+export async function add_formula_row_col(
+    notion: Client,
+    url: string,
+    options: FormulaInfo,
+    inspect = false
+    ): Promise<AppendBlockChildrenResponse> {
+
+    // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
+    return await get_tables_and_rows(notion, url)
+    .then(async (response) => {
+        // 行データから必要な情報を取り出す
+        const org_rowobjs_list: Array<TableRowBlockObject> = response.rowobjs_lists[0]
+
+        // 比較範囲からラベルを排除するため、デフォルト開始セルをヘッダーの有無に合わせて設定
+        const default_rowidx = (response.header_info_list[0][0]) ? 1 : 0
+        const default_colidx = (response.header_info_list[0][1]) ? 1 : 0
+
+        options.formula_list.forEach(info => formula_check(info.formula, default_rowidx, default_colidx))
+
+        let table_width = response.table_width_list[0]
+        const table_rows = add_formula_to_table(options, default_rowidx, default_colidx, org_rowobjs_list)
+        options.formula_list.forEach(info => {
+            if (info.formula.split("_")[0]=="R") { table_width += 1 }
+        })
+
+        // 更新した行データから、table block object を作成する
+        const table_props = { "object": 'block', "type": "table", "has_children": true,
+            "table": { "table_width": table_width,
+                "has_column_header": response.header_info_list[0][0],
+                "has_row_header": response.header_info_list[0][1],
+                "children": table_rows
+            }
+        } as BlockObjectRequest
+        
+        // inspcet == true のときは、リクエストには投げずにそのデータを返す
+        if (inspect) {
+            return Promise.resolve({ "results": [table_props] } as AppendBlockChildrenResponse)
+        }
+        
+        // 親要素にテーブルを追加
+        return await notion.blocks.children.append({
+            block_id: response.parent_id,
+            children: [table_props]
+        })
+    })
+}
 
 
 // 最大値・最小値に色付け

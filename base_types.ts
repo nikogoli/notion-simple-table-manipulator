@@ -21,6 +21,12 @@ export interface ColorInfo {
 }
 
 
+// 一様な数式行・列の追加の設定をまとまるもの (暫定)
+export interface FormulaInfo {
+    formula_list: Array<{"formula":string, "label":string}>
+}
+
+
 // 連番の設定をまとめるもの (暫定)
 export interface NumberingInfo {
     text_format: "{num}" | string

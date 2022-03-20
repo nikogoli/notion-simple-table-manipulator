@@ -10,12 +10,55 @@ import {
 import {
     CellObject,
     ColorInfo,
+    FormulaInfo,
     NumberingInfo,
     SeparateInfo,
     SortInfo,
     TableRowBlockObject,
     TableRowResponces,
 } from "./base_types.ts"
+
+
+// 行あるいは列として、特定の数式を評価した結果のセルを追加する
+// 数式の設定 + 評価範囲の先頭の行・列のインデックス + 行基準の table block object のリスト → 数式を評価した結果のセルが行・列に追加された table block object
+export function add_formula_to_table(
+    info: FormulaInfo,
+    default_rowidx: number,
+    default_colidx: number,
+    table_rows: Array<TableRowBlockObject>
+): Array<TableRowBlockObject>{
+
+    const cell_mat_by_row = create_cel_matrix("R", table_rows, default_rowidx, default_colidx)
+    const cell_mat_by_col = create_cel_matrix("C", table_rows, default_rowidx, default_colidx)
+    const table_labels: Record<string, Array<Array<RichTextItemResponse>|[]>> = {
+        "row": table_rows[0].table_row.cells,
+        "col": table_rows.map(row => row.table_row.cells[0])
+    }
+
+    info.formula_list.forEach(info => {
+        const [direction, formula] = info.formula.split("_")
+        if (direction=="R"){
+            cell_mat_by_row.forEach( (target, r_idx) => {
+                const new_text_obj = evaluate_formula("R", formula, target, table_labels)
+                table_rows[r_idx+default_rowidx].table_row.cells.push(new_text_obj)
+            })
+            if (default_rowidx==1) {table_rows[0].table_row.cells.push(set_celldata_obj("text", info.label))}
+        } else if (direction=="C") {
+            let new_cells = cell_mat_by_col.map( target => evaluate_formula("C", formula, target, table_labels) )
+            if (default_colidx==1) { new_cells = [set_celldata_obj("text", info.label), ...new_cells] }
+            table_rows.push( {"object":"block", "type":"table_row", "table_row": {"cells":new_cells}} )
+        } else {
+            throw new Error("formula が不適切です")
+        }
+    })
+    const max_width = table_rows.map(r => r.table_row.cells.length).sort((a,b) => b - a)[0]
+    table_rows.forEach( row => {
+        if (row.table_row.cells.length < max_width) {
+            [...Array(max_width - row.table_row.cells.length)].map(_x => row.table_row.cells.push(set_celldata_obj("text","")))
+        }
+    })
+    return table_rows
+}
 
 
 // 各行の先頭に、(指定したフォーマットで)上の行から順に番号を振る
@@ -108,6 +151,100 @@ export function change_text_color (
     }
     return table_rows
 }
+
+
+// 具体的な数式の評価処理
+// 評価の方向指定 + 数式 + 評価対象のセルのリスト + テーブルの行・列のラベルのセルのレコード → 数式を評価した結果をテキストに持つ rich text object
+function evaluate_formula (
+    direction: "R"|"C",
+    formula:string,
+    cells: Array<CellObject>,
+    table_labels: Record<string, Array<Array<RichTextItemResponse>|[]>>
+    ): Array<RichTextItemResponse>{
+    if (formula=="SUM") {
+        // 合計
+        const new_text = cells.reduce( (pre, now) => pre+Number(now.text), 0 )
+        return set_celldata_obj("text", String(new_text))
+    } else if (formula=="AVERAGE"){
+        // 平均
+        const new_text = cells.reduce( (pre, now) => pre+Number(now.text), 0 )/ cells.length
+        return set_celldata_obj("text", String(new_text.toFixed(2)))
+    } else if (formula=="COUNT") {
+        // 数え上げ
+        return set_celldata_obj("text", String(cells.length))
+    } else if (formula.includes("MAX") || formula.includes("MIN")) {
+        // 最大・最小系
+        // 計算対象の並べ替え → 1番目と2番目の値を取得
+        const ordered_num = [...new Set(cells.map( c => Number(c.text)))].sort( (a,b) => a - b)
+        const [first_min, second_min] = [ordered_num[0], ordered_num[1] ]
+        const [second_max, first_max] = [ordered_num[ordered_num.length-2], ordered_num[ordered_num.length-1]]
+
+        const lable_cells: Record<string, Array<RichTextItemResponse>|[]> = {"max":[], "second_max":[], "min":[], "second_min":[]}
+        // NAME系の命令では、元テーブルのラベル行・列の rich text object を取得する
+        if (formula.includes("NAME")) {
+            const cells_list = [first_min, second_min, second_max, first_max].map( nm => cells.filter(c => Number(c.text)==nm) )
+            const calls = ["min", "second_min", "second_max", "max"]
+            calls.forEach( (k, idx) => {
+                let labels: Array<Array<RichTextItemResponse>|[]>
+                if (direction=="R") {
+                    labels = cells_list[idx].map(c => c.c_idx).map(nm => table_labels.row[nm])
+                } else {
+                    labels = cells_list[idx].map(c => c.r_idx).map(nm => table_labels.col[nm] )
+                }
+                if (labels.length >1) {
+                    const space_inserted = [labels[0] , ...labels.slice(1).map(c => [set_celldata_obj("text", ", "), c]).flat() ]
+                    lable_cells[k] = space_inserted.flat()
+                } else {
+                    lable_cells[k] = labels.flat()
+                }
+            })
+        }
+        
+        // 普通の命令では、数値から rich text object を作って return する
+        if (formula=="MAX") {
+            return set_celldata_obj("text", String(first_max))
+        } else if (formula=="SECONDMAX") {
+            return set_celldata_obj("text", String(second_max))
+        } else if (formula=="MIN") {
+            return set_celldata_obj("text", String(first_min))
+        } else if (formula=="SECONDMIN") {
+            return set_celldata_obj("text", String(second_min))
+        }// NAME系の命令では、元テーブルのラベル行・列の rich text object をレコードから取り出して returnする
+        else if (formula=="MAXNAME") {
+            return lable_cells["max"]
+        } else if (formula=="SECONDMAXNAME") {
+            return lable_cells["second_max"]
+        } else if (formula=="MINNAME") {
+            return lable_cells["min"]
+        } else if (formula=="SECONDMINNAME") {
+            return lable_cells["second_min"]
+        } else {
+            throw new Error("formula が不適切です")
+        }
+    } else {
+        throw new Error("formula が不適切です")
+    }
+}
+
+
+// 数式処理の命令が適切かどうかチェックするもの
+// 処理命令 + 処理範囲の先頭の行・列のインデックス → 不適切ならエラーを投げる
+export function formula_check (formula_text: string, default_rowidx:number, default_colidx:number): void {
+    const [direction, call] = formula_text.split("_")
+    const direction_match = ["R", "C"].filter(t => t==direction)
+    const call_macth = ["SUM", "AVERAGE", "COUNT", "MAX", "SECONDMAX", "MAXNAME", "SECONDMAXNAME",
+                        "MIN", "SECONDMIN", "MINNAME", "SECONDMINNAME"].filter(t=>t==call)
+    const name_match = [ "MAXNAME", "SECONDMAXNAME", "MINNAME", "SECONDMINNAME"].filter(t=>t==call)
+    if (!(direction_match.length==1 && call_macth.length==1 )) {
+        console.log({direction, call})
+        throw new Error("formula が不適切です")
+    } else if ( name_match.length==1) {
+        if ((direction=="R" && default_rowidx==0)||(direction=="C" && default_colidx==0)) {
+            throw new Error("対応するラベル行・列がない場合、NAME系の formula は使用できません")
+        }
+    }
+}
+
 
 
 // 親要素を指定し、そこに含まれるテーブルに関する情報を取得する

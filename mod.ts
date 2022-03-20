@@ -1,4 +1,5 @@
 export {
+    add_formula_row_col,
     change_maxmin_colored,
     table_row_numbering,
     table_separation,
@@ -8,6 +9,7 @@ export {
 
 export type {
     ColorInfo,
+    FormulaInfo,
     NumberingInfo,
     SeparateInfo,
     SortInfo,
