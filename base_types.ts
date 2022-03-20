@@ -23,7 +23,7 @@ export interface TableRowBlockObject {
 
 
 // テーブル分割の設定をまとめたもの
-export interface SeparateInfo {
+export type SeparateInfo = {
     factory: {
         use_sort: SortInfo | false,
         count: number    

@@ -5,7 +5,7 @@ import { BlockObjectRequest,
 import { TableRowBlockObject,
         SeparateInfo,
         get_tables_and_rows,
-        separate_table } from "./mod.ts"
+        separate_table } from "./base_types.ts"
 
 
 // テーブル分割
