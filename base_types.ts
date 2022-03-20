@@ -14,9 +14,9 @@ type FormulaCall = "R_SUM" | "R_AVERAGE" | "R_COUNT" |
 
 
 // 操作と設定の組
-export type CallSet = {"manipulation":"sort", "option": SortInfo} | {"manipulation":"numbering", "option": NumberingInfo} |
-                {"manipulation":"colored", "option": ColorInfo} | {"manipulation":"fomula", "option": FormulaInfo} |
-                {"manipulation":"transpose", "option": null} | {"manipulation":"separate", "option": SeparateInfo}
+export type CallSet = {"manipulation":"sort", "options": SortInfo} | {"manipulation":"numbering", "options": NumberingInfo} |
+                {"manipulation":"colored", "options": ColorInfo} | {"manipulation":"fomula", "options": FormulaInfo} |
+                {"manipulation":"transpose", "options": null} | {"manipulation":"separate", "options": SeparateInfo}
 
 
 interface CallInfo {
