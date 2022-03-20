@@ -3,8 +3,8 @@ import { BlockObjectRequest,
         AppendBlockChildrenResponse } from "https://deno.land/x/notion_sdk/src/api-endpoints.ts";
 
 import {
+    SeparateInfo,
     TableRowBlockObject,
-    SeparateInfo,        
 } from "./base_types.ts"
 
 import {
