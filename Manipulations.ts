@@ -21,9 +21,10 @@ export async function table_separation (
     .then(async (response) => {
         // 行データから必要な情報を取り出す
         const org_rowobjs_list: Array<TableRowBlockObject> = response.rowobjs_lists[0]
+        const default_rowidx = (response.header_info_list[0][0]) ? 1 : 0
 
         // テーブル(の行データ)を複数のリストに分割する
-        const tables = separate_table(org_rowobjs_list, option)
+        const tables = separate_table(org_rowobjs_list, option, default_rowidx)
 
         // それぞれのリストごとに table block object を作る
         const table_props_list = tables.map(lis => {
