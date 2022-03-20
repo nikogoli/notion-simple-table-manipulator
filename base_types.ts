@@ -27,6 +27,15 @@ export interface FormulaInfo {
 }
 
 
+// csv や json からテーブルを作るの設定をまとめたもの
+export interface ImportInfo {
+    path: string
+    row_label: boolean
+    col_label: boolean
+    jsonkey_as_cell: boolean
+}
+
+
 // 連番の設定をまとめるもの (暫定)
 export interface NumberingInfo {
     text_format: "{num}" | string
