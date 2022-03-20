@@ -56,3 +56,45 @@ export async function table_separation (
         })
     })
 }
+
+
+// テーブル転置
+export async function table_transposation(
+    notion: Client,
+    url: string,
+    inspect = false
+    ): Promise<AppendBlockChildrenResponse> {
+
+    // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
+    return await get_tables_and_rows(notion, url)
+    .then(async (response) => {
+        // 行データから必要な情報を取り出す
+        const org_rowobjs_list: Array<TableRowBlockObject> = response.rowobjs_lists[0]
+
+        // テーブル(の行データ)を転置する
+        const table_rows = [...Array(response.table_width_list[0])].map( (_x, idx) => {
+            const new_cells = org_rowobjs_list.map( row => row.table_row.cells[idx] )
+            return {"object":"block", "type":"table_row", "table_row":{"cells": new_cells}}
+        } )
+
+        // 更新した行データから、table block object を作成する
+        const table_props = { "object": 'block', "type": "table", "has_children": true,
+            "table": { "table_width": response.table_width_list[0],
+                "has_column_header": response.header_info_list[0][0],
+                "has_row_header": response.header_info_list[0][1],
+                "children": table_rows
+            }
+        } as BlockObjectRequest
+        
+        // inspcet == true のときは、リクエストには投げずにそのデータを返す
+        if (inspect) {
+            return Promise.resolve({ "results": [table_props] } as AppendBlockChildrenResponse)
+        }
+        
+        // 親要素にテーブルを追加
+        return await notion.blocks.children.append({
+            block_id: response.parent_id,
+            children: [table_props]
+        })
+    })
+}
