@@ -124,7 +124,8 @@ export function separate_table(
 }
 
 
-// ソート設定、ラベル行の有無(1 or 0)、行基準の table row block のリストを入れると、指定列でソートした table block object を吐き出す
+// テーブルの並び替え
+// ソート設定 + 並び替え対象の先頭行のインデックス + 行基準の table row block のリスト → 指定列でソートした table row block のリスト
 export function sort_tablerows_by_col(
     info: SortInfo,
     default_rowidx: number,
