@@ -299,7 +299,7 @@ export async function table_sorting(
             // 比較範囲からラベルを排除するため、デフォルト開始セルをヘッダーの有無に合わせて設定
         const default_rowidx = (response.header_info_list[0][0]) ? 1 : 0
 
-        // テーブル(の行データ)を転置する
+        // テーブル(の行データ)を並び替える
         const table_rows = sort_tablerows_by_col(options, default_rowidx, org_rowobjs_list)
 
         // 更新した行データから、table block object を作成する
