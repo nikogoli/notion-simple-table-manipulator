@@ -3,6 +3,13 @@ import {
 } from "https://deno.land/x/notion_sdk/src/api-endpoints.ts"
 
 
+// セルの中身・セルの行・列インデックス・セルの plain_text をセットにしたもの
+export interface CellObject {
+    cell: Array<RichTextItemResponse>|[]
+    r_idx: number
+    c_idx: number
+    text : string
+}
 // テーブル分割の設定をまとめたもの
 export type SeparateInfo = {
     factory: {

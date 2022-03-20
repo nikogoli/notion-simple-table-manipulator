@@ -6,11 +6,44 @@ import {
 } from "https://deno.land/x/notion_sdk/src/api-endpoints.ts"
 
 import {
+    CellObject,
     SeparateInfo,
     SortInfo,
     TableRowBlockObject,
     TableRowResponces,
 } from "./base_types.ts"
+
+
+// テーブルの行列構造を元に構築された、「セル+セルの行・列インデックス+セルのテキスト」の行列を作るもの
+// 行・列全体に対する数式処理を簡便化するためのもの
+// 方向指定(行/列) + 行基準のtable row block のリスト + 情報を取り出す行・列の先頭のインデックス → 指定方向で2次元配列化された CellObject の行列
+function create_cel_matrix(
+    direction: "R"|"C" ,
+    list: Array<TableRowBlockObject>,
+    default_rowidx: number,
+    default_colidx: number
+): Array<Array<CellObject>> {
+    let mat: Array<Array<CellObject>>
+    if (direction=="R") {
+        mat = list.slice(default_rowidx).map(
+            (rowobj, r_idx) => rowobj.table_row.cells.slice(default_colidx).map(
+                (cell, c_idx) =>{
+                    const text = (cell.length) ? cell.map( ({plain_text}) => plain_text).join("") : ""
+                    return {cell, "r_idx": r_idx+default_rowidx, "c_idx": c_idx+default_colidx, text}
+                }
+            )
+        )
+    } else {
+        const c_idxs = [...Array(list[0].table_row.cells.length).keys()].slice(default_colidx)
+        mat = c_idxs.map( c_idx => list.slice(default_rowidx).map( (rowobj, r_idx) => {
+                const cell = rowobj.table_row.cells[c_idx]
+                const text = (cell.length) ? cell.map( c => c.plain_text).join("") : ""
+                return {cell, "r_idx": r_idx+default_rowidx, c_idx, text}
+            })
+        )
+    }
+    return mat
+}
 
 
 // 親要素を指定し、そこに含まれるテーブルに関する情報を取得する
