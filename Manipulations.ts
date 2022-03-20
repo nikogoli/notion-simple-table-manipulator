@@ -2,10 +2,15 @@ import { Client } from "https://deno.land/x/notion_sdk/src/mod.ts";
 import { BlockObjectRequest,
         AppendBlockChildrenResponse } from "https://deno.land/x/notion_sdk/src/api-endpoints.ts";
 
-import { TableRowBlockObject,
-        SeparateInfo,
-        get_tables_and_rows,
-        separate_table } from "./base_types.ts"
+import {
+    TableRowBlockObject,
+    SeparateInfo,        
+} from "./base_types.ts"
+
+import {
+    get_tables_and_rows,
+    separate_table,
+} from "./functions.ts"
 
 
 // テーブル分割
