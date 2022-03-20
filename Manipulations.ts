@@ -17,7 +17,7 @@ import {
 export async function table_separation (
     notion: Client,
     url: string,
-    option: SeparateInfo,
+    options: SeparateInfo,
     inspect = false
     ): Promise<AppendBlockChildrenResponse> {
         
@@ -29,7 +29,7 @@ export async function table_separation (
         const default_rowidx = (response.header_info_list[0][0]) ? 1 : 0
 
         // テーブル(の行データ)を複数のリストに分割する
-        const tables = separate_table(org_rowobjs_list, option, default_rowidx)
+        const tables = separate_table(org_rowobjs_list, options, default_rowidx)
 
         // それぞれのリストごとに table block object を作る
         const table_props_list = tables.map(lis => {
