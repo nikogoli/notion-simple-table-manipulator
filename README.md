@@ -4,7 +4,8 @@
  
  
 ### 注意点
-- テーブルを新規のものに差し替えるので、旧テーブルについたコメント等は消える (旧テーブルは notion の Trash に移動)
+- ~~テーブルを新規のものに差し替えるので、旧テーブルについたコメント等は消える (旧テーブルは notion の Trash に移動)~~ <br>
+  いまのところはまだ調整中なので、操作対象のテーブルの下に新しいテーブルを追加するだけで、元のテーブルの消去は行わない
 - simple table のリンクではなく、テーブルが入っている親要素へのリンクを指定して使用する
 
 
@@ -43,7 +44,7 @@ const separate_option: SeparateInfo = {
 // await 関数(notion-sdk の Client, url, 設定)
 await table_separation(notion, target_url, separate_option).then(response => console.log(response))
 
-// 第4引数(inspect)を true にすると、テーブルを append せずそのまま返す
+// 最後の引数(inspect)として true を渡すと、テーブルを append せずそのまま返す
 // await table_separation(notion, target_url, separate_option, true).then(
 //    response => console.log(response.results)   // 分割された table block object のリスト
 //)
