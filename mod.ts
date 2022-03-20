@@ -25,6 +25,53 @@ export interface TableRowBlockObject {
 // テーブル分割の設定をまとめたもの
 export interface SeparateInfo {
     labels: Array<string> | []       // 分割の基準となる行ラベルのリスト 指定行の上で切り分ける
+// ソートの設定をまとめるもの(暫定) 現状は、列基準のソートのみを想定
+export interface SortInfo {
+    label: string
+    as_int: boolean
+    reverse: boolean
+}
+
+
+// ソート設定、ラベル行の有無(1 or 0)、行基準の table row block のリストを入れると、指定列でソートした table block object を吐き出す
+export function sort_tablerows_by_col(
+    info: SortInfo,
+    default_rowidx: number,
+    table_rows: Array<TableRowBlockObject>
+        ) :Array<TableRowBlockObject> {
+
+    if (info.label=="") {return table_rows}
+
+    // 指定列の存在をチェック
+    const labels = table_rows[0].table_row.cells.map(cell => (cell.length) ? cell.map(c=>c.plain_text).join() : "")
+    const col_idx = labels.findIndex(lb => lb == info.label)
+    if (col_idx <0) {
+        throw new Error("テーブル内に、ソート基準に指定した列名が存在しません")
+    }
+
+    const records = table_rows.slice(1).map( (row, r_idx) => {
+        const cell = row.table_row.cells[col_idx]
+        if (cell.length) {
+            return { "text":cell.map(c => c.plain_text).join(), "r_idx": r_idx+1}
+        } else {
+            return {"text":"", "r_idx": r_idx+1}
+        }
+    })
+
+    let sorted = [...records]
+    if (info.as_int) {
+        sorted = records.sort((a,b) => (a.text < b.text) ? -1 : 1)            
+    } else {
+        sorted = records.slice(default_rowidx).sort((a,b) => Number(a.text) -Number(b.text))
+    }
+    if (info.reverse) {sorted.reverse()}
+
+    // ソートされた行番号の順に行を呼ぶことで、行データを並び替える
+    if (default_rowidx==1) {
+        return  [table_rows[0]].concat(sorted.map( ({r_idx}) => table_rows[r_idx] ))
+    } else {
+        return  sorted.map( ({r_idx}) => table_rows[r_idx] )
+    }
 }
 
 
