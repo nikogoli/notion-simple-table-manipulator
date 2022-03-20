@@ -198,6 +198,33 @@ export function separate_table(
 }
 
 
+// タイプ + テキスト → セルの内容として使える rich text object あるいは空行列
+// 現状では、"text" と "equation" のみに対応し、"mention" は未対応
+function set_celldata_obj(type:"text"|"equation", text:string) : Array<RichTextItemResponse> | []{
+    if (text) {
+        if (type=="equation") {
+            return [{
+                "type":"equation", "equation":{"expression": text},
+                "plain_text": text, "href": null,
+                "annotations": { "bold": false, "italic": false, "strikethrough": false,
+                    "underline": false, "code": false, "color": "default" }
+            } ]
+        } else if (type=="text") {
+            return [ {
+                "type":"text", "text":{"content": text, "link": null},
+                "plain_text": text, "href": null,
+                "annotations": { "bold": false, "italic": false, "strikethrough": false,
+                    "underline": false, "code": false, "color": "default" }
+            } ]
+        } else {
+            throw new Error("タイプ設定が不適切です")
+        }
+    } else {
+        return []
+    }
+}
+
+
 // テーブルの並び替え
 // ソート設定 + 並び替え対象の先頭行のインデックス + 行基準の table row block のリスト → 指定列でソートした table row block のリスト
 export function sort_tablerows_by_col(
