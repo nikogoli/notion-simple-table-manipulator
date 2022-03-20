@@ -4,16 +4,39 @@ import {
     ApiColor,
     BlockObjectResponse,
     PartialBlockObjectResponse,
+    RichTextItemResponse,
 } from "https://deno.land/x/notion_sdk/src/api-endpoints.ts"
 
 import {
     CellObject,
     ColorInfo,
+    NumberingInfo,
     SeparateInfo,
     SortInfo,
     TableRowBlockObject,
     TableRowResponces,
 } from "./base_types.ts"
+
+
+// 各行の先頭に、(指定したフォーマットで)上の行から順に番号を振る
+// 番号付けの設定 + 行基準の table block object のリスト → ラベル行には空セル、それ以外の行には連番セルを先頭に追加した table block object のリスト
+export function add_row_number(
+    number_info: NumberingInfo,
+    table_rows: Array<TableRowBlockObject>)
+: Array<TableRowBlockObject> {
+    return  table_rows.map( (item, idx) => {
+        if (idx==0) {
+            const new_cells = [...[set_celldata_obj("text", "")], ...item.table_row.cells]
+            return {"object": "block", "type": item.type, "table_row":{"cells": new_cells}}
+        } else {
+            const text = (number_info.text_format!="")
+                ? number_info.text_format.replace("{num}", String(idx))
+                : String(idx)
+            const new_cells = [...[set_celldata_obj("text", text)], ...item.table_row.cells]
+            return {"object": "block", "type": item.type, "table_row":{"cells": new_cells}}
+        }
+    })
+}
 
 
 // テーブルの行列構造を元に構築された、「セル+セルの行・列インデックス+セルのテキスト」の行列を作るもの

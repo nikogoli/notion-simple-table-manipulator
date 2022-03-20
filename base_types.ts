@@ -21,6 +21,12 @@ export interface ColorInfo {
 }
 
 
+// 連番の設定をまとめるもの (暫定)
+export interface NumberingInfo {
+    text_format: "{num}" | string
+}
+
+
 // テーブル分割の設定をまとめたもの
 export type SeparateInfo = {
     factory: {
