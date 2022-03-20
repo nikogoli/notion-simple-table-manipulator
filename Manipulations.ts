@@ -33,7 +33,7 @@ export async function change_maxmin_colored(
         // 行データから必要な情報を取り出す
         const org_rowobjs_list: Array<TableRowBlockObject> = response.rowobjs_lists[0]
 
-            // 比較範囲からラベルを排除するため、デフォルト開始セルをヘッダーの有無に合わせて設定
+        // 比較範囲からラベルを排除するため、デフォルト開始セルをヘッダーの有無に合わせて設定
         const default_rowidx = (response.header_info_list[0][0]) ? 1 : 0
         const default_colidx = (response.header_info_list[0][1]) ? 1 : 0
 
