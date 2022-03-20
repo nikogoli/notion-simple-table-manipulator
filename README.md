@@ -1,5 +1,6 @@
 # notion-simple-table-manipulator
- notion API を利用した simple table の操作を簡便化するための関数群 for deno
+ notion API (を使う [notion_sdk](https://deno.land/x/notion_sdk)) を利用した simple table の操作を簡便化するための関数群 for deno
+ 
  
  
 ### 注意点
@@ -14,22 +15,36 @@
 ```typescript
 import { Client } from "https://deno.land/x/notion_sdk/src/mod.ts"
 
-import { SeparateInfo} from "https://pax.deno.dev/nikogoli/notion-simple-table-manipulator/mod.ts"
-import { table_separation} from "https://pax.deno.dev/nikogoli/notion-simple-table-manipulator/Manipulations.ts"
-
+import { 
+    SeparateInfo,
+    table_separation
+} from "https://pax.deno.dev/nikogoli/notion-simple-table-manipulator/mod.ts"
 
 const NOTION_TOKEN = "~~~~"
 const notion = new Client({auth: NOTION_TOKEN})
 
 // テーブルが入った親要素のリンク あるいは親要素のid
-const target_url = "---親要素のid---"
 // const target_url = "https://www.notion.so/---ページのid---#---親要素のid---"
+const target_url = "---親要素のid---"
+
 
 // 分割の設定
 const separate_option: SeparateInfo = {
-    "labels": ["青1", "赤2"]
+    "factory": {                               // (必要ならソートをして) count で指定した行数のまとまりにテーブルを切り分ける
+        "use_sort": {"label":"列ラベル1", "as_int":true, "reverse":true},
+        "count": 3
+    },
+    "row_labels": ["行ラベル3", "行ラベル5"]    // 指定したラベルの行の上で、テーブルを切り分ける
+    
+    // "factory": false, "row_labels": []     // 何も設定しないとき   この場合は、テーブル内の空白行で切り分ける
 }
+
 
 // await 関数(notion-sdk の Client, url, 設定)
 await table_separation(notion, target_url, separate_option).then(response => console.log(response))
+
+// 第4引数(inspect)を true にすると、テーブルを append せずそのまま返す
+// await table_separation(notion, target_url, separate_option, true).then(
+//    response => console.log(response.results)   // 分割された table block object のリスト
+//)
 ```
