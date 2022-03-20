@@ -241,26 +241,6 @@ function evaluate_formula (
 }
 
 
-// 数式処理の命令が適切かどうかチェックするもの
-// 処理命令 + 処理範囲の先頭の行・列のインデックス → 不適切ならエラーを投げる
-export function formula_check (formula_text: string, default_rowidx:number, default_colidx:number): void {
-    const [direction, call] = formula_text.split("_")
-    const direction_match = ["R", "C"].filter(t => t==direction)
-    const call_macth = ["SUM", "AVERAGE", "COUNT", "MAX", "SECONDMAX", "MAXNAME", "SECONDMAXNAME",
-                        "MIN", "SECONDMIN", "MINNAME", "SECONDMINNAME"].filter(t=>t==call)
-    const name_match = [ "MAXNAME", "SECONDMAXNAME", "MINNAME", "SECONDMINNAME"].filter(t=>t==call)
-    if (!(direction_match.length==1 && call_macth.length==1 )) {
-        console.log({direction, call})
-        throw new Error("formula が不適切です")
-    } else if ( name_match.length==1) {
-        if ((direction=="R" && default_rowidx==0)||(direction=="C" && default_colidx==0)) {
-            throw new Error("対応するラベル行・列がない場合、NAME系の formula は使用できません")
-        }
-    }
-}
-
-
-
 // 親要素を指定し、そこに含まれるテーブルに関する情報を取得する
 // 親要素を含んだURL → 親要素のid、子要素であるテーブルのid・ヘッダー情報・テーブル幅・行データそれぞれのリスト
 export async function get_tables_and_rows(notion:Client, url:string): Promise<TableRowResponces> {

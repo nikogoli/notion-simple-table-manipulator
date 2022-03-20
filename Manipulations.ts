@@ -15,7 +15,6 @@ import {
 import {
     add_formula_to_table,
     add_row_number,
-    formula_check,
     change_text_color,
     get_tables_and_rows,
     separate_table,
@@ -42,7 +41,12 @@ export async function add_formula_row_col(
         const default_rowidx = (response.header_info_list[0][0]) ? 1 : 0
         const default_colidx = (response.header_info_list[0][1]) ? 1 : 0
 
-        options.formula_list.forEach(info => formula_check(info.formula, default_rowidx, default_colidx))
+        options.formula_list.forEach(info => {
+            if (( ["R_MAXNAME","R_MINNAME","R_SECONDMAXNAME","R_SECONDMINNAME"].includes(info.formula) && default_rowidx==0) ||
+                ( ["C_MAXNAME","C_MINNAME","C_SECONDMAXNAME","C_SECONDMINNAME"].includes(info.formula) && default_colidx==0)) {
+                    throw new Error("対応するラベル行・列がない場合、NAME系の formula は使用できません")
+                }
+        })
 
         let table_width = response.table_width_list[0]
         const table_rows = add_formula_to_table(options, default_rowidx, default_colidx, org_rowobjs_list)
