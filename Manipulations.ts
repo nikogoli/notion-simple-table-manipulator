@@ -190,7 +190,7 @@ export async function table_from_file(
 export async function table_row_numbering(
     notion: Client,
     url: string,
-    options: NumberingInfo,
+    options?: NumberingInfo,
     inspect = false
     ): Promise<AppendBlockChildrenResponse> {
 
@@ -201,7 +201,13 @@ export async function table_row_numbering(
         const org_rowobjs_list: Array<TableRowBlockObject> = response.rowobjs_lists[0]
 
         // テーブル(の行データ)を転置する
-        const table_rows = add_row_number(options, org_rowobjs_list)
+        let op: NumberingInfo
+        if (options==undefined) {
+            op = {"text_format":"{num}"}
+        } else {
+            op = options
+        }
+        const table_rows = add_row_number(op, org_rowobjs_list)
         const table_width = response.table_width_list[0] + 1
 
         // 更新した行データから、table block object を作成する
