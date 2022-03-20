@@ -102,7 +102,7 @@ export async function table_transposation(
 }
 
 
-// テーブル転置
+// テーブル並び替え
 export async function table_sorting(
     notion: Client,
     url: string,
