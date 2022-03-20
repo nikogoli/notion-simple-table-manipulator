@@ -336,7 +336,7 @@ export async function table_transposation(
 
         // 更新した行データから、table block object を作成する
         const table_props = { "object": 'block', "type": "table", "has_children": true,
-            "table": { "table_width": response.table_width_list[0],
+            "table": { "table_width": table_rows[0].table_row.cells.length,
                 "has_column_header": response.header_info_list[0][0],
                 "has_row_header": response.header_info_list[0][1],
                 "children": table_rows
