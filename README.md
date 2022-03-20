@@ -45,6 +45,7 @@ await table_hogehoge(notion, target_url, info).then(response => console.log(resp
 // await table_hogehoge(notion, target_url, info, true).then(response => console.log(response))
 ```
 
+-------
 
 ### 行の並び替え
 ```typescript
@@ -64,7 +65,7 @@ await table_sorting(notion, target_url, info).then(response => console.log(respo
 ![20220320173857](https://user-images.githubusercontent.com/49331838/159157322-92d47172-bc21-4258-944b-71bad4e3a3a3.png)
 
 
-
+------
 
 ### テーブルの各行に連番を振る
 ```typescript
@@ -84,7 +85,7 @@ await table_row_numbering(notion, target_url, info).then(response => console.log
 ![20220320174508](https://user-images.githubusercontent.com/49331838/159157223-63c318ed-8cb6-4f67-95a5-a5025955b38d.png)
 
 
-
+------
 
 ### 各行あるいは列の最大値や最小値のテキストに色を付ける
 ```typescript
@@ -104,7 +105,7 @@ await change_maxmin_colored(notion, target_url, info).then(response => console.l
 ![20220320175712](https://user-images.githubusercontent.com/49331838/159157044-f575350d-647c-4fd1-8ab6-e37f2e6e2d3f.png)
 
 
-
+-------
 
 ### 各行あるいは列に特定の数式処理を適用した結果を新規の行・列として追加する
 ```typescript
@@ -127,7 +128,7 @@ await add_formula_row_col(notion, target_url, info).then(response => console.log
 ![20220320185527](https://user-images.githubusercontent.com/49331838/159157071-39715632-3f90-43d2-b137-36467f4ae5b9.png)
 
 
-
+--------
 
 ### テーブルを転置
 ```typescript
@@ -143,7 +144,7 @@ await table_transposation(notion, target_url).then(response => console.log(respo
 ![20220320173337](https://user-images.githubusercontent.com/49331838/159157238-4be754b0-bb28-4447-9d26-111d6f7de34d.png)
 
 
-
+--------
 
 ### テーブルを分割
 ```typescript
@@ -171,7 +172,7 @@ await table_separation(notion, target_url, info).then(response => console.log(re
 ![20220320172422](https://user-images.githubusercontent.com/49331838/159157284-57e5b44a-0be8-49f2-a99a-0f7cc8a9b233.png)
 
 
-
+-------
 
 ### csv および json ファイルからテーブルを作成
 ```typescript
