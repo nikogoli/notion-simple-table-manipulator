@@ -37,18 +37,32 @@ export function add_formula_to_table(
 
     info.formula_list.forEach(info => {
         const [direction, formula] = info.formula.split("_")
+        let results_texts : Array< RichTextItemResponse[]> = []
         if (direction=="R"){
             cell_mat_by_row.forEach( (target, r_idx) => {
                 const new_text_obj = evaluate_formula("R", formula, target, table_labels)
                 table_rows[r_idx+default_rowidx].table_row.cells.push(new_text_obj)
+                results_texts.push(new_text_obj)
             })
             if (default_rowidx==1) {table_rows[0].table_row.cells.push(set_celldata_obj("text", info.label))}
         } else if (direction=="C") {
             let new_cells = cell_mat_by_col.map( target => evaluate_formula("C", formula, target, table_labels) )
+            results_texts = [...new_cells]
             if (default_colidx==1) { new_cells = [set_celldata_obj("text", info.label), ...new_cells] }
             table_rows.push( {"object":"block", "type":"table_row", "table_row": {"cells":new_cells}} )
         } else {
             throw new Error("formula が不適切です")
+        }
+        if (info.max || info.min) {
+            const sorted = results_texts.sort((a,b) => Number(a[0].plain_text) - Number(b[0].plain_text))
+            if (info.max) {
+                const max_cells = sorted.filter(item => item[0].plain_text==sorted[sorted.length-1][0].plain_text)
+                max_cells.forEach( c => c[0].annotations.color = info.max as ApiColor )
+            }
+            if (info.min) {
+                const max_cells = sorted.filter(item => item[0].plain_text==sorted[0][0].plain_text)
+                max_cells.forEach( c => c[0].annotations.color = info.min as ApiColor )
+            }
         }
     })
     const max_width = table_rows.map(r => r.table_row.cells.length).sort((a,b) => b - a)[0]

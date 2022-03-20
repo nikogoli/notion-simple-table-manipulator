@@ -13,6 +13,20 @@ type FormulaCall = "R_SUM" | "R_AVERAGE" | "R_COUNT" |
                     "C_MIN" | "C_SECONDMIN" | "C_MINNAME" | "C_SECONDMINNAME"
 
 
+// 操作と設定の組
+export type CallSet = {"manipulation":"sort", "option": SortInfo} | {"manipulation":"numbering", "option": NumberingInfo} |
+                {"manipulation":"colored", "option": ColorInfo} | {"manipulation":"fomula", "option": FormulaInfo} |
+                {"manipulation":"transpose", "option": null} | {"manipulation":"separate", "option": SeparateInfo}
+
+
+interface CallInfo {
+    formula: FormulaCall
+    label: string
+    max?: ApiColor
+    min?:ApiColor
+}
+
+
 // セルの中身・セルの行・列インデックス・セルの plain_text をセットにしたもの
 export interface CellObject {
     cell: Array<RichTextItemResponse>|[]
@@ -30,9 +44,10 @@ export interface ColorInfo {
 }
 
 
+
 // 一様な数式行・列の追加の設定をまとまるもの (暫定)
 export interface FormulaInfo {
-    formula_list: Array<{"formula":FormulaCall, "label":string}>
+    formula_list: Array<CallInfo>
 }
 
 
