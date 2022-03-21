@@ -161,25 +161,58 @@ export function change_text_color (
     const limit_l = (limit_colidx < 0) ? table_rows[0].table_row.cells.length : limit_colidx
     const arranged_mat = create_cel_matrix(color_info.direction, table_rows, default_rowidx, default_colidx, limit_r, limit_l)
 
+    let valid_idxs: Array<number> = []
+    const labels_for_r = table_rows.map(r => (r.table_row.cells[0].length) ? r.table_row.cells[0].map(t => t.plain_text).join() : "" )
+    const labels_for_l = table_rows[0].table_row.cells.map(c => (c.length) ? c.map(t => t.plain_text).join() : "" )
+    if (color_info.targets == "all") {
+        if (color_info.excludes){
+            if (typeof(color_info.excludes[0]) == "number") {
+                valid_idxs = [...Array(table_rows[0].table_row.cells.length).keys()]
+                valid_idxs = valid_idxs.filter(i => !(color_info.excludes as Array<number>).includes(i))
+            } else {
+                const base = (color_info.direction=="R") ? labels_for_r : labels_for_l
+                base.forEach((lb, idx) => {
+                    if (!((color_info.excludes as Array<string>).includes(lb))) { valid_idxs.push(idx) }
+                })
+            }
+        } else {
+            valid_idxs = [...Array(table_rows[0].table_row.cells.length).keys()]
+        }
+    } else {
+        if (color_info.excludes) { throw new Error('targets が"all"以外のときは、excludes の指定はできません') }
+        if (typeof(color_info.targets[0]) == "number") {
+            valid_idxs = color_info.targets as Array<number>
+        } else {
+            const base = (color_info.direction=="R") ? labels_for_r : labels_for_l
+            base.forEach((lb, idx) => {
+                if ((color_info.targets as Array<string>).includes(lb)) { valid_idxs.push(idx) }
+            })
+        }
+    }
+
     if (color_info.max!="" || color_info.min!=""){
         arranged_mat.forEach( (targets) => {
             // 評価対象のセルを並び替え、先頭と末尾のテキストを取得し、それと値が等しいセルを取得する (同じ値のセルが複数ある場合に対応)
-            const sorted = targets.sort((a,b) => Number(a.text)-Number(b.text))
-            const [min_tx, max_tx] = [sorted[0].text, sorted[sorted.length-1].text]            
-            const min_cells = targets.filter(item => item.text==min_tx)
-            const max_cells = targets.filter(item => item.text==max_tx)
+            if ((color_info.direction=="R" && valid_idxs.includes(targets[0].r_idx) ) ||
+                (color_info.direction=="C" && valid_idxs.includes(targets[0].c_idx) ))
+            {   
+                const sorted = targets.sort((a,b) => Number(a.text)-Number(b.text))
+                const [min_tx, max_tx] = [sorted[0].text, sorted[sorted.length-1].text]            
+                const min_cells = targets.filter(item => item.text==min_tx)
+                const max_cells = targets.filter(item => item.text==max_tx)
 
-            targets.forEach(c => {
-                if (color_info.max!="" && max_cells.includes(c) && c.cell.length){
-                    table_rows[c.r_idx].table_row.cells[c.c_idx].forEach(c => c.annotations.color= color_info.max as ApiColor)
-                }
-                else if (color_info.min!="" && min_cells.includes(c) && c.cell.length){
-                    table_rows[c.r_idx].table_row.cells[c.c_idx].forEach(c => c.annotations.color= color_info.min as ApiColor)
-                }
-                else if (c.cell.length){
-                    table_rows[c.r_idx].table_row.cells[c.c_idx].forEach(c => c.annotations.color= "default")
-                }
-            })
+                targets.forEach(c => {
+                    if (color_info.max!="" && max_cells.includes(c) && c.cell.length){
+                        table_rows[c.r_idx].table_row.cells[c.c_idx].forEach(c => c.annotations.color= color_info.max as ApiColor)
+                    }
+                    else if (color_info.min!="" && min_cells.includes(c) && c.cell.length){
+                        table_rows[c.r_idx].table_row.cells[c.c_idx].forEach(c => c.annotations.color= color_info.min as ApiColor)
+                    }
+                    else if (c.cell.length){
+                        table_rows[c.r_idx].table_row.cells[c.c_idx].forEach(c => c.annotations.color= "default")
+                    }
+                })
+            }
         } )
     }
     return table_rows
