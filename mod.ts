@@ -1,5 +1,6 @@
 export {
     add_formula_row_col,
+    table_manipulations,
     change_maxmin_colored,
     table_from_file,
     table_row_numbering,
@@ -9,6 +10,7 @@ export {
 } from "./Manipulations.ts"
 
 export type {
+    ManipulateSet,
     ColorInfo,
     FormulaInfo,
     ImportInfo,
