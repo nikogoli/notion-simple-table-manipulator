@@ -231,19 +231,33 @@ export async function table_from_file(
 export async function table_joining(
     notion: Client,
     url: string,
-    options?: boolean,
+    calls?: Array<ManipulateSet> | null,
     inspect = false  
 ): Promise<AppendBlockChildrenResponse> {
 
     // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
     return await get_tables_and_rows(notion, url)
     .then(async (response) => {
-        // 行データから必要な情報を取り出す
+        // 複数テーブルの行データのリストのリストを取得
         const org_rowobjs_lists: Array<Array<TableRowBlockObject>> = response.rowobjs_lists
 
-        // 
-        const table_rows = join_tabels(org_rowobjs_lists, response.header_info_list, response.table_width_list)
+        // 比較範囲からラベルを排除するため、デフォルト開始セルをヘッダーの有無に合わせて設定
+        const default_rowidx = (response.header_info_list[0][0]) ? 1 : 0
+        const default_colidx = (response.header_info_list[0][1]) ? 1 : 0
 
+        // 複数テーブルを接合
+        let table_rows = join_tabels(org_rowobjs_lists, response.header_info_list, response.table_width_list)
+
+        if (calls!==null && calls!==undefined) {
+            const new_response: TableRowResponces = {
+                "header_info_list": response.header_info_list,
+                "parent_id": response.parent_id,
+                "table_id_list": response.table_id_list,
+                "table_width_list": [table_rows[0].table_row.cells.length],
+                "rowobjs_lists": [table_rows]
+            }    
+            table_rows = maltiple_manipulation(new_response, table_rows, default_rowidx, default_colidx, calls)
+        }
 
         // 更新した行データから、table block object を作成する
         const table_props = { "object": 'block', "type": "table", "has_children": true,
