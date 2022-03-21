@@ -25,11 +25,16 @@ export function add_formula_to_table(
     info: FormulaInfo,
     default_rowidx: number,
     default_colidx: number,
-    table_rows: Array<TableRowBlockObject>
+    table_rows: Array<TableRowBlockObject>,
+    limit_rowidx = -1,
+    limit_colidx = -1
 ): Array<TableRowBlockObject>{
 
-    const cell_mat_by_row = create_cel_matrix("R", table_rows, default_rowidx, default_colidx)
-    const cell_mat_by_col = create_cel_matrix("C", table_rows, default_rowidx, default_colidx)
+    const limit_r = (limit_rowidx < 0) ? table_rows.length : limit_rowidx
+    const limit_l = (limit_colidx < 0) ? table_rows[0].table_row.cells.length : limit_colidx
+    
+    const cell_mat_by_row = create_cel_matrix("R", table_rows, default_rowidx, default_colidx, limit_r, limit_l)
+    const cell_mat_by_col = create_cel_matrix("C", table_rows, default_rowidx, default_colidx, limit_r, limit_l)
     const table_labels: Record<string, Array<Array<RichTextItemResponse>|[]>> = {
         "row": table_rows[0].table_row.cells,
         "col": table_rows.map(row => row.table_row.cells[0])
@@ -143,10 +148,14 @@ export function change_text_color (
     color_info: ColorInfo,
     default_rowidx: number,
     default_colidx: number,
-    table_rows: Array<TableRowBlockObject>
+    table_rows: Array<TableRowBlockObject>,
+    limit_rowidx = -1,
+    limit_colidx = -1
     ) : Array<TableRowBlockObject> {
 
-    const arranged_mat = create_cel_matrix(color_info.direction, table_rows, default_rowidx, default_colidx)
+    const limit_r = (limit_rowidx < 0) ? table_rows.length : limit_rowidx
+    const limit_l = (limit_colidx < 0) ? table_rows[0].table_row.cells.length : limit_colidx
+    const arranged_mat = create_cel_matrix(color_info.direction, table_rows, default_rowidx, default_colidx, limit_r, limit_l)
 
     if (color_info.max!="" || color_info.min!=""){
         arranged_mat.forEach( (targets) => {
@@ -393,8 +402,9 @@ export function set_celldata_obj(type:"text"|"equation", text:string) : Array<Ri
 export function sort_tablerows_by_col(
     info: SortInfo,
     default_rowidx: number,
-    table_rows: Array<TableRowBlockObject>
-        ) :Array<TableRowBlockObject> {
+    table_rows: Array<TableRowBlockObject>,
+    limit_rowidx = table_rows.length
+) :Array<TableRowBlockObject> {
 
     if (info.label=="") {return table_rows}
 
@@ -405,7 +415,7 @@ export function sort_tablerows_by_col(
         throw new Error("テーブル内に、ソート基準に指定した列名が存在しません")
     }
 
-    const records = table_rows.slice(1).map( (row, r_idx) => {
+    const records = table_rows.slice(1, limit_rowidx).map( (row, r_idx) => {
         const cell = row.table_row.cells[col_idx]
         if (cell.length) {
             return { "text":cell.map(c => c.plain_text).join(), "r_idx": r_idx+1}
@@ -424,8 +434,8 @@ export function sort_tablerows_by_col(
 
     // ソートされた行番号の順に行を呼ぶことで、行データを並び替える
     if (default_rowidx==1) {
-        return  [table_rows[0]].concat(sorted.map( ({r_idx}) => table_rows[r_idx] ))
+        return  [...[table_rows[0]].concat(sorted.map( ({r_idx}) => table_rows[r_idx] )), ...table_rows.slice(limit_rowidx)]
     } else {
-        return  sorted.map( ({r_idx}) => table_rows[r_idx] )
+        return  [...sorted.map( ({r_idx}) => table_rows[r_idx] ), ...table_rows.slice(limit_rowidx)]
     }
 }
