@@ -10,6 +10,7 @@ import {
 import {
     CellObject,
     ColorInfo,
+    ConvertFromInfo,
     FormulaInfo,
     NumberingInfo,
     SeparateInfo,
@@ -143,6 +144,41 @@ function create_cel_matrix(
         )
     }
     return mat
+}
+
+
+// 文字列から(必要なら)ラベル部分の切り出しを行い、レコードを経由して table row block のリストを作成
+// 文字列のリスト + 切り分けの設定 → table row block のリスト
+export function create_from_text(
+    texts: Array<string>,
+    options: ConvertFromInfo
+): Array<TableRowBlockObject> {
+    let table_rows: Array<TableRowBlockObject>
+    if (options.col_label){
+        // ラベル+セルのテキストの場合、セルごとに切り分けてレコードを作る
+        const sep = options.col_label.sep
+        const row_records: Array<Record<string, string>> = texts.map( tx =>{
+            return Object.fromEntries( tx.split(options.separation).map( t => t.split(sep) ) )
+        })
+
+        // ラベル行とセル行をそれぞれ作り、table row block としてまとめる
+        const unique_labels = [...new Set(row_records.map(rec => Object.keys(rec)).flat())]
+        const row_cells_list = row_records.map(rec => unique_labels.map(lb => {
+               return (lb in rec) ? set_celldata_obj("text", rec[lb])  : set_celldata_obj("text", "")
+            })
+        )
+        const header_row_cells = unique_labels.map(lb => set_celldata_obj("text", lb))
+        table_rows = [header_row_cells, ...row_cells_list].map(cells => {
+            return {"object":"block", "type":"table_row", "table_row":{"cells":cells}}
+        })
+    } else {
+        // セルのテキストのみの場合、そのままセルを作り、そのまま table row block を作る
+        const row_cells_list = texts.map(tx => tx.split(options.separation).map(t => set_celldata_obj("text", t)) )
+        table_rows = row_cells_list.map(cells => {
+            return {"object":"block", "type":"table_row", "table_row":{"cells":cells}}
+        })
+    }
+    return table_rows
 }
 
 
@@ -290,6 +326,41 @@ function evaluate_formula (
     } else {
         throw new Error("formula が不適切です")
     }
+}
+
+
+// 親要素を指定し、そこに含まれるリストのデータを取得する
+// 親要素を含んだURL → 親要素のid、子要素であるリスト要素のidのリスト・リスト要素のテキストのリスト
+export async function get_lists(
+    notion:Client,
+    url:string
+): Promise<{"texts_ids":Array<string>, "texts":Array<string>, "parent_id":string}> {
+    let parent_id: string
+    if (!url.startsWith("https://")) {
+        parent_id = url
+    } else {
+        const matched = url.match(/so\/(.+)#(.+)/)
+        if (!matched) {throw new Error("URLのパースに失敗しました")}
+        parent_id = matched[2]
+    }
+    return await notion.blocks.children.list({ block_id: parent_id }).then( (response) => {
+        // 親要素以下の リスト要素を取得する
+        const texts: Array<string> = []
+        const texts_ids: Array<string> = []
+        response.results.forEach(item => {
+            if ("type" in item) {
+                if (item.type=="bulleted_list_item") {
+                    texts_ids.push(item.id)
+                    texts.push(item.bulleted_list_item.rich_text.map(t => t.plain_text).join())
+                } else if (item.type=="numbered_list_item" ){
+                    texts_ids.push(item.id)
+                    texts.push(item.numbered_list_item.rich_text.map(t => t.plain_text).join())
+                }
+            }
+        })
+        if (!texts_ids.length) {throw new Error("子要素にリストブロックが見つかりません")}
+        return {texts_ids, texts, parent_id}
+    })
 }
 
 

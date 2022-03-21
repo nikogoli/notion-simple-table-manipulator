@@ -5,6 +5,7 @@ import { BlockObjectRequest,
 import {
     ManipulateSet,
     ColorInfo,
+    ConvertFromInfo,
     FormulaInfo,
     ImportInfo,
     NumberingInfo,
@@ -18,6 +19,8 @@ import {
     add_formula_to_table,
     add_row_number,
     change_text_color,
+    create_from_text,
+    get_lists,
     get_tables_and_rows,
     join_tabels,
     separate_table,
@@ -89,6 +92,43 @@ export async function change_maxmin_colored(
 ): Promise<AppendBlockChildrenResponse> {
     return await table_manipulations(notion, url, [{"manipulation":"colored", "options":options}], inspect)
 }
+
+
+// リストをテーブルに変換
+export async function conversion_from_list(
+    notion: Client,
+    url: string,
+    options: ConvertFromInfo,
+    inspect = false
+): Promise<AppendBlockChildrenResponse> {
+    return await get_lists(notion, url).then(async (response) => {
+        const {texts, parent_id} = response
+
+        // 文字列のリストからテーブル形式へ
+        const table_rows = create_from_text(texts, options)
+
+        const table_props = { "object": 'block', "type": "table", "has_children": true,
+            "table": { "table_width": table_rows[0].table_row.cells.length,
+                "has_column_header": options.row_label,
+                "has_row_header": (options.col_label) ? true : false,
+                "children": table_rows
+            }
+        } as BlockObjectRequest
+                
+        // inspcet == true のときは、リクエストには投げずにそのデータを返す
+        if (inspect) {
+            return Promise.resolve({ "results": [table_props] } as AppendBlockChildrenResponse)
+        }
+
+        // 親要素にテーブルを追加
+        return await notion.blocks.children.append({
+            block_id: parent_id,
+            children: [table_props]
+        })
+    })
+}
+
+
 
 
 // 連続処理

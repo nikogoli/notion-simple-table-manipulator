@@ -49,6 +49,12 @@ export interface ColorInfo {
 }
 
 
+export interface ConvertFromInfo {
+    row_label: boolean
+    col_label: {sep: string} | false
+    separation: string
+}
+
 
 // 一様な数式行・列の追加の設定をまとまるもの (暫定)
 export interface FormulaInfo {

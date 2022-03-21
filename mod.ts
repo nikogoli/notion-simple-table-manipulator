@@ -2,6 +2,7 @@ export {
     add_formula_row_col,
     table_manipulations,
     change_maxmin_colored,
+    conversion_from_list,
     table_from_file,
     table_row_numbering,
     table_separation,
@@ -13,6 +14,7 @@ export {
 export type {
     ManipulateSet,
     ColorInfo,
+    ConvertFromInfo,
     FormulaInfo,
     ImportInfo,
     NumberingInfo,
