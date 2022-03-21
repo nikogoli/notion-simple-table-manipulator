@@ -110,7 +110,6 @@ function maltiple_manipulation (
     
     // 処理
     let table_rows = [...org_table_rows]
-    let new_table_width = response.table_width_list[0]
     let eval_limit_row = table_rows.length
     let eval_limit_col = response.table_width_list[0]
     const new_def_rowidx = default_rowidx
@@ -129,11 +128,6 @@ function maltiple_manipulation (
                     }
             })
             table_rows = add_formula_to_table(call.options, new_def_rowidx, new_def_colidx, table_rows, eval_limit_row, eval_limit_col)
-            call.options.formula_list.forEach(info => {
-                if (info.formula.split("_")[0]=="R") {
-                    new_table_width += 1
-                }
-            })
         }
         else if (call.manipulation =="numbering") {
             // 各行に連番を振る
@@ -142,7 +136,6 @@ function maltiple_manipulation (
             } else {
                 table_rows = add_row_number(call.options, table_rows)
             }
-            new_table_width += 1
             new_def_colidx += 1
             eval_limit_col += 1
         }
@@ -158,7 +151,6 @@ function maltiple_manipulation (
             } );
             
             [eval_limit_col, eval_limit_row] = [eval_limit_row, eval_limit_col]
-            new_table_width = table_rows[0].table_row.cells.length
         }
     })
     return table_rows
