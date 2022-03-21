@@ -18,6 +18,7 @@ import {
     add_row_number,
     change_text_color,
     get_tables_and_rows,
+    join_tabels,
     separate_table,
     set_celldata_obj,
     sort_tablerows_by_col,
@@ -213,6 +214,47 @@ export async function table_from_file(
         // 親要素にテーブルを追加
         return await notion.blocks.children.append({
             block_id: parent_id,
+            children: [table_props]
+        })
+    })
+}
+
+
+// テーブルを接合
+export async function table_joining(
+    notion: Client,
+    url: string,
+    options?: boolean,
+    inspect = false  
+): Promise<AppendBlockChildrenResponse> {
+
+    // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
+    return await get_tables_and_rows(notion, url)
+    .then(async (response) => {
+        // 行データから必要な情報を取り出す
+        const org_rowobjs_lists: Array<Array<TableRowBlockObject>> = response.rowobjs_lists
+
+        // 
+        const table_rows = join_tabels(org_rowobjs_lists, response.header_info_list, response.table_width_list)
+
+
+        // 更新した行データから、table block object を作成する
+        const table_props = { "object": 'block', "type": "table", "has_children": true,
+            "table": { "table_width": table_rows[0].table_row.cells.length,
+                "has_column_header": response.header_info_list[0][0],
+                "has_row_header": response.header_info_list[0][1],
+                "children": table_rows
+            }
+        } as BlockObjectRequest
+        
+        // inspcet == true のときは、リクエストには投げずにそのデータを返す
+        if (inspect) {
+            return Promise.resolve({ "results": [table_props] } as AppendBlockChildrenResponse)
+        }
+        
+        // 親要素にテーブルを追加
+        return await notion.blocks.children.append({
+            block_id: response.parent_id,
             children: [table_props]
         })
     })

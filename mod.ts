@@ -7,6 +7,7 @@ export {
     table_separation,
     table_sorting,
     table_transposation,
+    table_joining
 } from "./Manipulations.ts"
 
 export type {
