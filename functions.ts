@@ -48,7 +48,14 @@ export function add_formula_to_table(
         } else if (direction=="C") {
             let new_cells = cell_mat_by_col.map( target => evaluate_formula("C", formula, target, table_labels) )
             results_texts = [...new_cells]
-            if (default_colidx==1) { new_cells = [set_celldata_obj("text", info.label), ...new_cells] }
+            if (default_colidx > 0) {
+                if (default_colidx > 1) {
+                    const blank_cells = [...Array(default_colidx-1)].map(_x => set_celldata_obj("text",""))
+                    new_cells = [set_celldata_obj("text", info.label), ...blank_cells, ...new_cells] 
+                } else {
+                    new_cells = [set_celldata_obj("text", info.label), ...new_cells] 
+                }
+            }
             table_rows.push( {"object":"block", "type":"table_row", "table_row": {"cells":new_cells}} )
         } else {
             throw new Error("formula が不適切です")
