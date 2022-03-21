@@ -315,6 +315,8 @@ export async function get_tables_and_rows(notion:Client, url:string): Promise<Ta
 
 // 結合
 //
+// 全てのテーブルにラベル行がないとき、テーブルはそのまま結合される
+// ラベル行があるものと無いものが混合しているとき、ラベル行がないテーブルはその1つ上に位置するテーブルに合わせて結合される
 export function join_tabels(
     table_rows_lists: Array<Array<TableRowBlockObject>>,
     header_info_list: Array<Array<boolean>>,
@@ -324,6 +326,8 @@ export function join_tabels(
     let new_rows: Array<Array<Array<RichTextItemResponse>|[]>>
     if (! header_info_list.map( rowcol => rowcol[0] ).includes(true)) {
         new_rows = table_rows_lists.map(lis => lis.map(row => row.table_row.cells)).flat()
+    } else if (header_info_list.map( rowcol => rowcol[0] ).includes(true) && header_info_list[0][0]==false) {
+        throw new Error("ラベル行を持つ行列が少なくとも1つある場合、一番上に位置する行列はラベル行を持つものにしてください")
     } else {
         type CellRecord = Record<string, Array<RichTextItemResponse>|[]>
         const label_record_list: Array<CellRecord> = []
