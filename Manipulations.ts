@@ -31,50 +31,7 @@ export async function add_formula_row_col(
     options: FormulaInfo,
     inspect = false
     ): Promise<AppendBlockChildrenResponse> {
-
-    // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
-    return await get_tables_and_rows(notion, url)
-    .then(async (response) => {
-        // 行データから必要な情報を取り出す
-        const org_rowobjs_list: Array<TableRowBlockObject> = response.rowobjs_lists[0]
-
-        // 比較範囲からラベルを排除するため、デフォルト開始セルをヘッダーの有無に合わせて設定
-        const default_rowidx = (response.header_info_list[0][0]) ? 1 : 0
-        const default_colidx = (response.header_info_list[0][1]) ? 1 : 0
-
-        options.formula_list.forEach(info => {
-            if (( ["R_MAXNAME","R_MINNAME","R_SECONDMAXNAME","R_SECONDMINNAME"].includes(info.formula) && default_rowidx==0) ||
-                ( ["C_MAXNAME","C_MINNAME","C_SECONDMAXNAME","C_SECONDMINNAME"].includes(info.formula) && default_colidx==0)) {
-                    throw new Error("対応するラベル行・列がない場合、NAME系の formula は使用できません")
-                }
-        })
-
-        let table_width = response.table_width_list[0]
-        const table_rows = add_formula_to_table(options, default_rowidx, default_colidx, org_rowobjs_list)
-        options.formula_list.forEach(info => {
-            if (info.formula.split("_")[0]=="R") { table_width += 1 }
-        })
-
-        // 更新した行データから、table block object を作成する
-        const table_props = { "object": 'block', "type": "table", "has_children": true,
-            "table": { "table_width": table_width,
-                "has_column_header": response.header_info_list[0][0],
-                "has_row_header": response.header_info_list[0][1],
-                "children": table_rows
-            }
-        } as BlockObjectRequest
-        
-        // inspcet == true のときは、リクエストには投げずにそのデータを返す
-        if (inspect) {
-            return Promise.resolve({ "results": [table_props] } as AppendBlockChildrenResponse)
-        }
-        
-        // 親要素にテーブルを追加
-        return await notion.blocks.children.append({
-            block_id: response.parent_id,
-            children: [table_props]
-        })
-    })
+    return await table_manipulations(notion, url, [{"manipulation":"fomula", "options":options}], inspect)
 }
 
 
@@ -188,41 +145,8 @@ export async function change_maxmin_colored(
     url: string,
     options: ColorInfo,
     inspect = false
-    ): Promise<AppendBlockChildrenResponse> {
-
-    // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
-    return await get_tables_and_rows(notion, url)
-    .then(async (response) => {
-        // 行データから必要な情報を取り出す
-        const org_rowobjs_list: Array<TableRowBlockObject> = response.rowobjs_lists[0]
-
-        // 比較範囲からラベルを排除するため、デフォルト開始セルをヘッダーの有無に合わせて設定
-        const default_rowidx = (response.header_info_list[0][0]) ? 1 : 0
-        const default_colidx = (response.header_info_list[0][1]) ? 1 : 0
-
-        // テーブルの各行・列について、指定に応じて色を付ける
-        const table_rows = change_text_color(options, default_rowidx, default_colidx, org_rowobjs_list)
-
-        // 更新した行データから、table block object を作成する
-        const table_props = { "object": 'block', "type": "table", "has_children": true,
-            "table": { "table_width": response.table_width_list[0],
-                "has_column_header": response.header_info_list[0][0],
-                "has_row_header": response.header_info_list[0][1],
-                "children": table_rows
-            }
-        } as BlockObjectRequest
-        
-        // inspcet == true のときは、リクエストには投げずにそのデータを返す
-        if (inspect) {
-            return Promise.resolve({ "results": [table_props] } as AppendBlockChildrenResponse)
-        }
-        
-        // 親要素にテーブルを追加
-        return await notion.blocks.children.append({
-            block_id: response.parent_id,
-            children: [table_props]
-        })
-    })
+): Promise<AppendBlockChildrenResponse> {
+    return await table_manipulations(notion, url, [{"manipulation":"colored", "options":options}], inspect)
 }
 
 
@@ -301,44 +225,12 @@ export async function table_row_numbering(
     url: string,
     options?: NumberingInfo,
     inspect = false
-    ): Promise<AppendBlockChildrenResponse> {
-
-    // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
-    return await get_tables_and_rows(notion, url)
-    .then(async (response) => {
-        // 行データから必要な情報を取り出す
-        const org_rowobjs_list: Array<TableRowBlockObject> = response.rowobjs_lists[0]
-
-        // テーブル(の行データ)を転置する
-        let op: NumberingInfo
-        if (options==undefined) {
-            op = {"text_format":"{num}"}
-        } else {
-            op = options
-        }
-        const table_rows = add_row_number(op, org_rowobjs_list)
-        const table_width = response.table_width_list[0] + 1
-
-        // 更新した行データから、table block object を作成する
-        const table_props = { "object": 'block', "type": "table", "has_children": true,
-            "table": { "table_width": table_width,
-                "has_column_header": response.header_info_list[0][0],
-                "has_row_header": response.header_info_list[0][1],
-                "children": table_rows
-            }
-        } as BlockObjectRequest
-        
-        // inspcet == true のときは、リクエストには投げずにそのデータを返す
-        if (inspect) {
-            return Promise.resolve({ "results": [table_props] } as AppendBlockChildrenResponse)
-        }
-        
-        // 親要素にテーブルを追加
-        return await notion.blocks.children.append({
-            block_id: response.parent_id,
-            children: [table_props]
-        })
-    })
+): Promise<AppendBlockChildrenResponse> {
+    if (options!=undefined){
+        return await table_manipulations(notion, url, [{"manipulation":"numbering", "options":options}], inspect)
+    } else {
+        return await table_manipulations(notion, url, [{"manipulation":"numbering", "options":{"text_format":"{num}"}}], inspect)
+    }
 }
 
 
@@ -393,40 +285,8 @@ export async function table_sorting(
     url: string,
     options: SortInfo,
     inspect = false
-    ): Promise<AppendBlockChildrenResponse> {
-
-    // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
-    return await get_tables_and_rows(notion, url)
-    .then(async (response) => {
-        // 行データから必要な情報を取り出す
-        const org_rowobjs_list: Array<TableRowBlockObject> = response.rowobjs_lists[0]
-
-            // 比較範囲からラベルを排除するため、デフォルト開始セルをヘッダーの有無に合わせて設定
-        const default_rowidx = (response.header_info_list[0][0]) ? 1 : 0
-
-        // テーブル(の行データ)を並び替える
-        const table_rows = sort_tablerows_by_col(options, default_rowidx, org_rowobjs_list)
-
-        // 更新した行データから、table block object を作成する
-        const table_props = { "object": 'block', "type": "table", "has_children": true,
-            "table": { "table_width": response.table_width_list[0],
-                "has_column_header": response.header_info_list[0][0],
-                "has_row_header": response.header_info_list[0][1],
-                "children": table_rows
-            }
-        } as BlockObjectRequest
-        
-        // inspcet == true のときは、リクエストには投げずにそのデータを返す
-        if (inspect) {
-            return Promise.resolve({ "results": [table_props] } as AppendBlockChildrenResponse)
-        }
-        
-        // 親要素にテーブルを追加
-        return await notion.blocks.children.append({
-            block_id: response.parent_id,
-            children: [table_props]
-        })
-    })
+): Promise<AppendBlockChildrenResponse> {
+    return await table_manipulations(notion, url, [{"manipulation":"sort", "options":options}], inspect)
 }
 
 
@@ -435,38 +295,6 @@ export async function table_transposation(
     notion: Client,
     url: string,
     inspect = false
-    ): Promise<AppendBlockChildrenResponse> {
-
-    // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
-    return await get_tables_and_rows(notion, url)
-    .then(async (response) => {
-        // 行データから必要な情報を取り出す
-        const org_rowobjs_list: Array<TableRowBlockObject> = response.rowobjs_lists[0]
-
-        // テーブル(の行データ)を転置する
-        const table_rows = [...Array(response.table_width_list[0])].map( (_x, idx) => {
-            const new_cells = org_rowobjs_list.map( row => row.table_row.cells[idx] )
-            return {"object":"block", "type":"table_row", "table_row":{"cells": new_cells}}
-        } )
-
-        // 更新した行データから、table block object を作成する
-        const table_props = { "object": 'block', "type": "table", "has_children": true,
-            "table": { "table_width": table_rows[0].table_row.cells.length,
-                "has_column_header": response.header_info_list[0][0],
-                "has_row_header": response.header_info_list[0][1],
-                "children": table_rows
-            }
-        } as BlockObjectRequest
-        
-        // inspcet == true のときは、リクエストには投げずにそのデータを返す
-        if (inspect) {
-            return Promise.resolve({ "results": [table_props] } as AppendBlockChildrenResponse)
-        }
-        
-        // 親要素にテーブルを追加
-        return await notion.blocks.children.append({
-            block_id: response.parent_id,
-            children: [table_props]
-        })
-    })
+): Promise<AppendBlockChildrenResponse> {
+    return await table_manipulations(notion, url, [{"manipulation":"transpose", "options":null}], inspect)
 }
