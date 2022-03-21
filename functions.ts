@@ -25,11 +25,16 @@ export function add_formula_to_table(
     info: FormulaInfo,
     default_rowidx: number,
     default_colidx: number,
-    table_rows: Array<TableRowBlockObject>
+    table_rows: Array<TableRowBlockObject>,
+    limit_rowidx = -1,
+    limit_colidx = -1
 ): Array<TableRowBlockObject>{
 
-    const cell_mat_by_row = create_cel_matrix("R", table_rows, default_rowidx, default_colidx)
-    const cell_mat_by_col = create_cel_matrix("C", table_rows, default_rowidx, default_colidx)
+    const limit_r = (limit_rowidx < 0) ? table_rows.length : limit_rowidx
+    const limit_l = (limit_colidx < 0) ? table_rows[0].table_row.cells.length : limit_colidx
+    
+    const cell_mat_by_row = create_cel_matrix("R", table_rows, default_rowidx, default_colidx, limit_r, limit_l)
+    const cell_mat_by_col = create_cel_matrix("C", table_rows, default_rowidx, default_colidx, limit_r, limit_l)
     const table_labels: Record<string, Array<Array<RichTextItemResponse>|[]>> = {
         "row": table_rows[0].table_row.cells,
         "col": table_rows.map(row => row.table_row.cells[0])
@@ -37,18 +42,39 @@ export function add_formula_to_table(
 
     info.formula_list.forEach(info => {
         const [direction, formula] = info.formula.split("_")
+        let results_texts : Array< RichTextItemResponse[]> = []
         if (direction=="R"){
             cell_mat_by_row.forEach( (target, r_idx) => {
                 const new_text_obj = evaluate_formula("R", formula, target, table_labels)
                 table_rows[r_idx+default_rowidx].table_row.cells.push(new_text_obj)
+                results_texts.push(new_text_obj)
             })
             if (default_rowidx==1) {table_rows[0].table_row.cells.push(set_celldata_obj("text", info.label))}
         } else if (direction=="C") {
             let new_cells = cell_mat_by_col.map( target => evaluate_formula("C", formula, target, table_labels) )
-            if (default_colidx==1) { new_cells = [set_celldata_obj("text", info.label), ...new_cells] }
+            results_texts = [...new_cells]
+            if (default_colidx > 0) {
+                if (default_colidx > 1) {
+                    const blank_cells = [...Array(default_colidx-1)].map(_x => set_celldata_obj("text",""))
+                    new_cells = [set_celldata_obj("text", info.label), ...blank_cells, ...new_cells] 
+                } else {
+                    new_cells = [set_celldata_obj("text", info.label), ...new_cells] 
+                }
+            }
             table_rows.push( {"object":"block", "type":"table_row", "table_row": {"cells":new_cells}} )
         } else {
             throw new Error("formula が不適切です")
+        }
+        if (info.max || info.min) {
+            const sorted = results_texts.sort((a,b) => Number(a[0].plain_text) - Number(b[0].plain_text))
+            if (info.max) {
+                const max_cells = sorted.filter(item => item[0].plain_text==sorted[sorted.length-1][0].plain_text)
+                max_cells.forEach( c => c[0].annotations.color = info.max as ApiColor )
+            }
+            if (info.min) {
+                const max_cells = sorted.filter(item => item[0].plain_text==sorted[0][0].plain_text)
+                max_cells.forEach( c => c[0].annotations.color = info.min as ApiColor )
+            }
         }
     })
     const max_width = table_rows.map(r => r.table_row.cells.length).sort((a,b) => b - a)[0]
@@ -89,12 +115,14 @@ function create_cel_matrix(
     direction: "R"|"C" ,
     list: Array<TableRowBlockObject>,
     default_rowidx: number,
-    default_colidx: number
+    default_colidx: number,
+    limit_rowidx: number,
+    limit_colidx: number
 ): Array<Array<CellObject>> {
     let mat: Array<Array<CellObject>>
     if (direction=="R") {
-        mat = list.slice(default_rowidx).map(
-            (rowobj, r_idx) => rowobj.table_row.cells.slice(default_colidx).map(
+        mat = list.slice(default_rowidx, limit_rowidx).map(
+            (rowobj, r_idx) => rowobj.table_row.cells.slice(default_colidx, limit_colidx).map(
                 (cell, c_idx) =>{
                     const text = (cell.length) ? cell.map( ({plain_text}) => plain_text).join("") : ""
                     return {cell, "r_idx": r_idx+default_rowidx, "c_idx": c_idx+default_colidx, text}
@@ -102,8 +130,8 @@ function create_cel_matrix(
             )
         )
     } else {
-        const c_idxs = [...Array(list[0].table_row.cells.length).keys()].slice(default_colidx)
-        mat = c_idxs.map( c_idx => list.slice(default_rowidx).map( (rowobj, r_idx) => {
+        const c_idxs = [...Array(list[0].table_row.cells.length).keys()].slice(default_colidx, limit_colidx)
+        mat = c_idxs.map( c_idx => list.slice(default_rowidx, limit_rowidx).map( (rowobj, r_idx) => {
                 const cell = rowobj.table_row.cells[c_idx]
                 const text = (cell.length) ? cell.map( c => c.plain_text).join("") : ""
                 return {cell, "r_idx": r_idx+default_rowidx, c_idx, text}
@@ -120,10 +148,14 @@ export function change_text_color (
     color_info: ColorInfo,
     default_rowidx: number,
     default_colidx: number,
-    table_rows: Array<TableRowBlockObject>
+    table_rows: Array<TableRowBlockObject>,
+    limit_rowidx = -1,
+    limit_colidx = -1
     ) : Array<TableRowBlockObject> {
 
-    const arranged_mat = create_cel_matrix(color_info.direction, table_rows, default_rowidx, default_colidx)
+    const limit_r = (limit_rowidx < 0) ? table_rows.length : limit_rowidx
+    const limit_l = (limit_colidx < 0) ? table_rows[0].table_row.cells.length : limit_colidx
+    const arranged_mat = create_cel_matrix(color_info.direction, table_rows, default_rowidx, default_colidx, limit_r, limit_l)
 
     if (color_info.max!="" || color_info.min!=""){
         arranged_mat.forEach( (targets) => {
@@ -225,26 +257,6 @@ function evaluate_formula (
         throw new Error("formula が不適切です")
     }
 }
-
-
-// 数式処理の命令が適切かどうかチェックするもの
-// 処理命令 + 処理範囲の先頭の行・列のインデックス → 不適切ならエラーを投げる
-export function formula_check (formula_text: string, default_rowidx:number, default_colidx:number): void {
-    const [direction, call] = formula_text.split("_")
-    const direction_match = ["R", "C"].filter(t => t==direction)
-    const call_macth = ["SUM", "AVERAGE", "COUNT", "MAX", "SECONDMAX", "MAXNAME", "SECONDMAXNAME",
-                        "MIN", "SECONDMIN", "MINNAME", "SECONDMINNAME"].filter(t=>t==call)
-    const name_match = [ "MAXNAME", "SECONDMAXNAME", "MINNAME", "SECONDMINNAME"].filter(t=>t==call)
-    if (!(direction_match.length==1 && call_macth.length==1 )) {
-        console.log({direction, call})
-        throw new Error("formula が不適切です")
-    } else if ( name_match.length==1) {
-        if ((direction=="R" && default_rowidx==0)||(direction=="C" && default_colidx==0)) {
-            throw new Error("対応するラベル行・列がない場合、NAME系の formula は使用できません")
-        }
-    }
-}
-
 
 
 // 親要素を指定し、そこに含まれるテーブルに関する情報を取得する
@@ -390,8 +402,9 @@ export function set_celldata_obj(type:"text"|"equation", text:string) : Array<Ri
 export function sort_tablerows_by_col(
     info: SortInfo,
     default_rowidx: number,
-    table_rows: Array<TableRowBlockObject>
-        ) :Array<TableRowBlockObject> {
+    table_rows: Array<TableRowBlockObject>,
+    limit_rowidx = table_rows.length
+) :Array<TableRowBlockObject> {
 
     if (info.label=="") {return table_rows}
 
@@ -402,7 +415,7 @@ export function sort_tablerows_by_col(
         throw new Error("テーブル内に、ソート基準に指定した列名が存在しません")
     }
 
-    const records = table_rows.slice(1).map( (row, r_idx) => {
+    const records = table_rows.slice(1, limit_rowidx).map( (row, r_idx) => {
         const cell = row.table_row.cells[col_idx]
         if (cell.length) {
             return { "text":cell.map(c => c.plain_text).join(), "r_idx": r_idx+1}
@@ -421,8 +434,8 @@ export function sort_tablerows_by_col(
 
     // ソートされた行番号の順に行を呼ぶことで、行データを並び替える
     if (default_rowidx==1) {
-        return  [table_rows[0]].concat(sorted.map( ({r_idx}) => table_rows[r_idx] ))
+        return  [...[table_rows[0]].concat(sorted.map( ({r_idx}) => table_rows[r_idx] )), ...table_rows.slice(limit_rowidx)]
     } else {
-        return  sorted.map( ({r_idx}) => table_rows[r_idx] )
+        return  [...sorted.map( ({r_idx}) => table_rows[r_idx] ), ...table_rows.slice(limit_rowidx)]
     }
 }
