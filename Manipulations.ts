@@ -131,10 +131,11 @@ function maltiple_manipulation (
         }
         else if (call.manipulation =="numbering") {
             // 各行に連番を振る
-            if (call.options==undefined) {
-                table_rows = add_row_number({"text_format":"{num}"}, table_rows)
+            if (call.options!==null && call.options!==undefined) {
+                table_rows = add_row_number(call.options, table_rows, new_def_rowidx)
             } else {
-                table_rows = add_row_number(call.options, table_rows)
+                const ops: NumberingInfo = {"label":"", "start_number":1, "step":1, "text_format": "{num}"}
+                table_rows = add_row_number(ops, table_rows, new_def_rowidx)
             }
             new_def_colidx += 1
             eval_limit_col += 1
@@ -286,13 +287,15 @@ export async function table_joining(
 export async function table_row_numbering(
     notion: Client,
     url: string,
-    options?: NumberingInfo,
+    options?: NumberingInfo | null,
     inspect = false
 ): Promise<AppendBlockChildrenResponse> {
-    if (options!=undefined){
-        return await table_manipulations(notion, url, [{"manipulation":"numbering", "options":options}], inspect)
+    
+    if (options === undefined ){
+        const num_ops: NumberingInfo = {"label":"", "text_format":"{num}", "start_number": 1, "step": 1}
+        return await table_manipulations(notion, url, [{"manipulation":"numbering", "options":num_ops}], inspect)
     } else {
-        return await table_manipulations(notion, url, [{"manipulation":"numbering", "options":{"text_format":"{num}"}}], inspect)
+        return await table_manipulations(notion, url, [{"manipulation":"numbering", "options":options}], inspect)
     }
 }
 

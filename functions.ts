@@ -91,17 +91,21 @@ export function add_formula_to_table(
 // 番号付けの設定 + 行基準の table block object のリスト → ラベル行には空セル、それ以外の行には連番セルを先頭に追加した table block object のリスト
 export function add_row_number(
     number_info: NumberingInfo,
-    table_rows: Array<TableRowBlockObject>)
+    table_rows: Array<TableRowBlockObject>,
+    default_rowidx: number
+)
 : Array<TableRowBlockObject> {
+    const label = (number_info.label) ? number_info.label : ""
+    const step = (number_info.step) ? number_info.step : 1
+    const start = (number_info.start_number) ? number_info.start_number : 1
+    const text = (number_info.text_format) ? number_info.text_format : "{num}"
     return  table_rows.map( (item, idx) => {
-        if (idx==0) {
-            const new_cells = [...[set_celldata_obj("text", "")], ...item.table_row.cells]
+        if (idx == default_rowidx-1) {
+            const new_cells = [...[set_celldata_obj("text", label)], ...item.table_row.cells]
             return {"object": "block", "type": item.type, "table_row":{"cells": new_cells}}
         } else {
-            const text = (number_info.text_format!="")
-                ? number_info.text_format.replace("{num}", String(idx))
-                : String(idx)
-            const new_cells = [...[set_celldata_obj("text", text)], ...item.table_row.cells]
+            const cell_text = text.replace("{num}", String(start+(idx-default_rowidx)*step ))
+            const new_cells = [...[set_celldata_obj("text", cell_text)], ...item.table_row.cells]
             return {"object": "block", "type": item.type, "table_row":{"cells": new_cells}}
         }
     })

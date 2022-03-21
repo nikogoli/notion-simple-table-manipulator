@@ -14,9 +14,12 @@ type FormulaCall = "R_SUM" | "R_AVERAGE" | "R_COUNT" |
 
 
 // 操作と設定の組
-export type ManipulateSet = {"manipulation":"sort", "options": SortInfo} | {"manipulation":"numbering", "options": NumberingInfo} |
-                {"manipulation":"colored", "options": ColorInfo} | {"manipulation":"fomula", "options": FormulaInfo} |
-                {"manipulation":"transpose", "options": null}// | {"manipulation":"separate", "options": SeparateInfo}
+export type ManipulateSet = {"manipulation":"sort", "options": SortInfo} | 
+                            {"manipulation":"numbering", "options": NumberingInfo|null} |
+                            {"manipulation":"colored", "options": ColorInfo} |
+                            {"manipulation":"fomula", "options": FormulaInfo} |
+                            {"manipulation":"transpose", "options": null}
+                            // | {"manipulation":"separate", "options": SeparateInfo}
 
 
 interface CallInfo {
@@ -62,7 +65,10 @@ export interface ImportInfo {
 
 // 連番の設定をまとめるもの (暫定)
 export interface NumberingInfo {
-    text_format: "{num}" | string
+    label?: string
+    start_number?: number
+    step?: number
+    text_format?: "{num}" | string
 }
 
 
