@@ -110,7 +110,7 @@ export async function table_manipulations(
         let new_table_width = response.table_width_list[0]
         let eval_limit_row = table_rows.length
         let eval_limit_col = response.table_width_list[0]
-        let new_def_rowidx = default_rowidx
+        const new_def_rowidx = default_rowidx
         let new_def_colidx = default_colidx
         calls.forEach( call => {
             if (call.manipulation == "colored") {
