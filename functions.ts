@@ -110,12 +110,14 @@ function create_cel_matrix(
     direction: "R"|"C" ,
     list: Array<TableRowBlockObject>,
     default_rowidx: number,
-    default_colidx: number
+    default_colidx: number,
+    limit_rowidx: number,
+    limit_colidx: number
 ): Array<Array<CellObject>> {
     let mat: Array<Array<CellObject>>
     if (direction=="R") {
-        mat = list.slice(default_rowidx).map(
-            (rowobj, r_idx) => rowobj.table_row.cells.slice(default_colidx).map(
+        mat = list.slice(default_rowidx, limit_rowidx).map(
+            (rowobj, r_idx) => rowobj.table_row.cells.slice(default_colidx, limit_colidx).map(
                 (cell, c_idx) =>{
                     const text = (cell.length) ? cell.map( ({plain_text}) => plain_text).join("") : ""
                     return {cell, "r_idx": r_idx+default_rowidx, "c_idx": c_idx+default_colidx, text}
@@ -123,8 +125,8 @@ function create_cel_matrix(
             )
         )
     } else {
-        const c_idxs = [...Array(list[0].table_row.cells.length).keys()].slice(default_colidx)
-        mat = c_idxs.map( c_idx => list.slice(default_rowidx).map( (rowobj, r_idx) => {
+        const c_idxs = [...Array(list[0].table_row.cells.length).keys()].slice(default_colidx, limit_colidx)
+        mat = c_idxs.map( c_idx => list.slice(default_rowidx, limit_rowidx).map( (rowobj, r_idx) => {
                 const cell = rowobj.table_row.cells[c_idx]
                 const text = (cell.length) ? cell.map( c => c.plain_text).join("") : ""
                 return {cell, "r_idx": r_idx+default_rowidx, c_idx, text}
