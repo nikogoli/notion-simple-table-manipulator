@@ -169,21 +169,18 @@ export function change_text_color (
             const min_cells = targets.filter(item => item.text==min_tx)
             const max_cells = targets.filter(item => item.text==max_tx)
 
-            if (color_info.max!=""){
-                max_cells.forEach(c => {
-                    if (c.cell.length) {
-                        table_rows[c.r_idx].table_row.cells[c.c_idx].forEach(c => c.annotations.color= color_info.max as ApiColor)
-                    }
-                })
-            }
-            if (color_info.min!="") {
-                min_cells.forEach(c => {
-                    if (c.cell.length) {
-                        table_rows[c.r_idx].table_row.cells[c.c_idx].forEach(c => c.annotations.color= color_info.min as ApiColor)
-                    }
-                })
-            }
-        })
+            targets.forEach(c => {
+                if (color_info.max!="" && max_cells.includes(c) && c.cell.length){
+                    table_rows[c.r_idx].table_row.cells[c.c_idx].forEach(c => c.annotations.color= color_info.max as ApiColor)
+                }
+                else if (color_info.min!="" && min_cells.includes(c) && c.cell.length){
+                    table_rows[c.r_idx].table_row.cells[c.c_idx].forEach(c => c.annotations.color= color_info.min as ApiColor)
+                }
+                else if (c.cell.length){
+                    table_rows[c.r_idx].table_row.cells[c.c_idx].forEach(c => c.annotations.color= "default")
+                }
+            })
+        } )
     }
     return table_rows
 }
