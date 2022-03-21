@@ -313,6 +313,66 @@ export async function get_tables_and_rows(notion:Client, url:string): Promise<Ta
 }
 
 
+// 結合
+//
+// 全てのテーブルにラベル行がないとき、テーブルはそのまま結合される
+// ラベル行があるものと無いものが混合しているとき、ラベル行がないテーブルはその1つ上に位置するテーブルに合わせて結合される
+export function join_tabels(
+    table_rows_lists: Array<Array<TableRowBlockObject>>,
+    header_info_list: Array<Array<boolean>>,
+    table_width_list: Array<number>
+) :Array<TableRowBlockObject> {
+
+    let new_rows: Array<Array<Array<RichTextItemResponse>|[]>>
+    if (! header_info_list.map( rowcol => rowcol[0] ).includes(true)) {
+        new_rows = table_rows_lists.map(lis => lis.map(row => row.table_row.cells)).flat()
+    } else if (header_info_list.map( rowcol => rowcol[0] ).includes(true) && header_info_list[0][0]==false) {
+        throw new Error("ラベル行を持つ行列が少なくとも1つある場合、一番上に位置する行列はラベル行を持つものにしてください")
+    } else {
+        type CellRecord = Record<string, Array<RichTextItemResponse>|[]>
+        const label_record_list: Array<CellRecord> = []
+        const row_records_list: Array<Array<CellRecord>> = []
+        table_rows_lists.forEach( (table_rows, idx) => {
+            const header_info = header_info_list[idx]
+            let label_rec: CellRecord
+            let rows = table_rows
+            if (header_info[0]==true) {
+                label_rec = Object.fromEntries(table_rows[0].table_row.cells.map( 
+                    c => (c.length) ? [c.map(t => t.plain_text).join(), c] : ["", c]
+                ))
+                label_record_list.push(label_rec)
+                rows = table_rows.slice(1)
+            } else {
+                label_rec = label_record_list[label_record_list.length-1]
+            }
+            const labels = [...Object.keys(label_rec)]
+            const row_records: Array<CellRecord> = rows.map(
+                row => Object.fromEntries( row.table_row.cells.map( (cell, idx) => [labels[idx], cell] ) )
+            )
+            row_records_list.push( row_records )
+        })
+
+        const unique_labels = [...new Set( label_record_list.map(rec => [...Object.keys(rec)]).flat() )]
+        let header_row : Array<[] | Array<RichTextItemResponse>>
+        let body_rows : Array<Array<Array<RichTextItemResponse>>>
+        if (unique_labels.length == table_width_list[0]) {
+            header_row = unique_labels.map( lb => label_record_list[0][lb])
+            body_rows = row_records_list.flat().map(rec => unique_labels.map(lb => rec[lb]))
+        } else {
+            const new_label_record: CellRecord = Object.fromEntries(label_record_list.map(rec => Object.entries(rec)).flat())
+            header_row =  unique_labels.map(lb => new_label_record[lb])
+            body_rows = row_records_list.flat().map(rec => unique_labels.map(lb => {
+                return (lb in rec) ? rec[lb] : set_celldata_obj("text","")
+            }) )
+        }
+        new_rows = [header_row, ...body_rows]
+    }
+    return new_rows.map(row => {
+        return {"object":"block", "type":"table_row", "table_row": {"cells":row}} as TableRowBlockObject
+    })
+}
+
+
 // テーブルの分割処理
 // table row block のリスト + 処理の設定 → 分割された複数の table row block のリスト
 export function separate_table(
