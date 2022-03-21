@@ -36,7 +36,7 @@ export async function add_formula_row_col(
 }
 
 
-// 
+// 汎用処理
 export async function table_manipulations(
     notion: Client,
     url: string,
@@ -59,7 +59,7 @@ export async function table_manipulations(
         const trans_idx = manipus.findIndex(t => t=="transpose")
         if ( trans_idx != -1 ) {
             if ((manipus.length > 2) && (trans_idx!=0 && trans_idx!=manipus.length-1 )  ) {
-                //throw new Error("転置は一番最初あるいは一番最後に実行してください")
+                throw new Error("転置は一番最初あるいは一番最後に実行してください")
             }
         }
 
