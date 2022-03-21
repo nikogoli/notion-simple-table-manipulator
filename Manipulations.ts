@@ -133,7 +133,7 @@ export async function table_manipulations(
                 })
             }
             else if (call.manipulation =="numbering") {
-                // テーブル(の行データ)を転置する
+                // 各行に連番を振る
                 if (call.options==undefined) {
                     table_rows = add_row_number({"text_format":"{num}"}, table_rows)
                 } else {
