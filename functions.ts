@@ -314,9 +314,10 @@ export async function get_tables_and_rows(notion:Client, url:string): Promise<Ta
 
 
 // 結合
-//
-// 全てのテーブルにラベル行がないとき、テーブルはそのまま結合される
-// ラベル行があるものと無いものが混合しているとき、ラベル行がないテーブルはその1つ上に位置するテーブルに合わせて結合される
+// テーブルごとの行データ + ヘッダー設定 + テーブル幅 → 結合されたテーブル扱いの行データのリスト
+//      全てのテーブルにラベル行がないとき、テーブルはそのまま結合される
+//      ラベル行があるものと無いものが混合しているとき、ラベル行がないテーブルはその1つ上に位置するテーブルに合わせて結合される
+//      テーブル間に異なるラベル列がある場合も許容し、各行で元のテーブルにない部分は空セルで埋める
 export function join_tabels(
     table_rows_lists: Array<Array<TableRowBlockObject>>,
     header_info_list: Array<Array<boolean>>,
