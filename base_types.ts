@@ -22,6 +22,14 @@ export type ManipulateSet = {"manipulation":"sort", "options": SortInfo} |
                             // | {"manipulation":"separate", "options": SeparateInfo}
 
 
+
+// リストから追加する際の設定
+export interface AppendFromInfo {
+    col_label: {sep: string} | false
+    separation: string
+}                         
+
+
 interface CallInfo {
     formula: FormulaCall
     label: string
