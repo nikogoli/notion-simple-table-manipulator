@@ -334,7 +334,7 @@ function evaluate_formula (
 export async function get_lists(
     notion:Client,
     url:string
-): Promise<{"texts_ids":Array<string>, "texts":Array<string>, "parent_id":string}> {
+): Promise<{"texts_ids":Array<string>, "texts":Array<string>, "parent_id":string, "table_id":string}> {
     let parent_id: string
     if (!url.startsWith("https://")) {
         parent_id = url
@@ -347,6 +347,7 @@ export async function get_lists(
         // 親要素以下の リスト要素を取得する
         const texts: Array<string> = []
         const texts_ids: Array<string> = []
+        let table_id =""
         response.results.forEach(item => {
             if ("type" in item) {
                 if (item.type=="bulleted_list_item") {
@@ -355,11 +356,13 @@ export async function get_lists(
                 } else if (item.type=="numbered_list_item" ){
                     texts_ids.push(item.id)
                     texts.push(item.numbered_list_item.rich_text.map(t => t.plain_text).join())
+                } else if (item.type=="table" ) {
+                    table_id = item.id
                 }
             }
         })
         if (!texts_ids.length) {throw new Error("子要素にリストブロックが見つかりません")}
-        return {texts_ids, texts, parent_id}
+        return {texts_ids, texts, parent_id, table_id}
     })
 }
 
