@@ -58,6 +58,12 @@ export class TableManipulator {
         }
     }
 
+    public readonly notion_with_id = {
+        blocks : {
+            retrieve : ( () => {return this.notion.blocks.retrieve({"block_id":this.block_id})})
+        }
+    }
+
     public async table_manipulations(
         {   calls,
             inspect }: GenericCall
