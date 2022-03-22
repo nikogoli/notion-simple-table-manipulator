@@ -172,6 +172,51 @@ export async function conversion_from_list(
 }
 
 
+// テーブルをリストに変換
+export async function conversion_to_list(
+    notion: Client,
+    url: string,
+    options: ConvertInfo,
+    inspect = false
+): Promise<AppendBlockChildrenResponse> {
+    return await get_tables_and_rows(notion, url)
+    .then(async (response) => {
+        // 行データから必要な情報を取り出す
+        const org_rowobjs_list: Array<TableRowBlockObject> = response.rowobjs_lists[0]
+
+        // 
+        const text_mat = org_rowobjs_list.map(
+            row => row.table_row.cells.map(cell => (cell.length) ? cell.map(c => c.plain_text).join() : "" )
+        )
+        let formatted_text: Array<Array<string>>
+        if (options.col_label) {
+            const {sep} = options.col_label
+            const labels = text_mat[0]
+            formatted_text = text_mat.slice(1).map(row => row.map( (t,idx) => labels[idx]+sep+t) )
+        } else {
+            formatted_text = text_mat
+        }
+
+        const list_items = formatted_text.map(row => row.join(options.separation)).map(tx => {
+            return {
+                "object":"block", "type": "bulleted_list_item",
+                "bulleted_list_item":{"rich_text": set_celldata_obj("text", tx)}
+            }
+        }) as Array<BlockObjectRequest>
+        
+                
+        // inspcet == true のときは、リクエストには投げずにそのデータを返す
+        if (inspect) {
+            return Promise.resolve({ "results": list_items } as AppendBlockChildrenResponse)
+        }
+
+        // 親要素にテーブルを追加
+        return await notion.blocks.children.append({
+            block_id: response.parent_id,
+            children: list_items
+        })
+    })
+}
 
 
 // 連続処理
