@@ -49,6 +49,7 @@ export interface ColorInfo {
 }
 
 
+// リストから変換する際の設定をまとめたもの
 export interface ConvertFromInfo {
     row_label: boolean
     col_label: {sep: string} | false
