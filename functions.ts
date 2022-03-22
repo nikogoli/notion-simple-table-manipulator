@@ -10,7 +10,7 @@ import {
 import {
     CellObject,
     ColorInfo,
-    ConvertFromInfo,
+    ConvertInfo,
     FormulaInfo,
     NumberingInfo,
     SeparateInfo,
@@ -151,7 +151,7 @@ function create_cel_matrix(
 // 文字列のリスト + 切り分けの設定 → table row block のリスト
 export function create_from_text(
     texts: Array<string>,
-    options: ConvertFromInfo
+    options: ConvertInfo
 ): Array<TableRowBlockObject> {
     let table_rows: Array<TableRowBlockObject>
     if (options.col_label){

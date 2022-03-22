@@ -6,7 +6,7 @@ import {
     ManipulateSet,
     AppendFromInfo,
     ColorInfo,
-    ConvertFromInfo,
+    ConvertInfo,
     FormulaInfo,
     ImportInfo,
     NumberingInfo,
@@ -141,7 +141,7 @@ export async function change_maxmin_colored(
 export async function conversion_from_list(
     notion: Client,
     url: string,
-    options: ConvertFromInfo,
+    options: ConvertInfo,
     inspect = false
 ): Promise<AppendBlockChildrenResponse> {
     return await get_lists(notion, url).then(async (response) => {
