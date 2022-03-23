@@ -3,13 +3,16 @@ import { Client } from "https://deno.land/x/notion_sdk/src/mod.ts";
 import { 
     ApiColor,
     BlockObjectResponse,
+    BlockObjectRequest,
     PartialBlockObjectResponse,
     RichTextItemResponse,
 } from "https://deno.land/x/notion_sdk/src/api-endpoints.ts"
 
 import {
+    CallInfo,
     CellObject,
     ColorInfo,
+    ConvertInfo,
     FormulaInfo,
     NumberingInfo,
     SeparateInfo,
@@ -42,16 +45,24 @@ export function add_formula_to_table(
 
     info.formula_list.forEach(info => {
         const [direction, formula] = info.formula.split("_")
+        const valid_idxs = get_valid_indices(table_rows, info)
+
         let results_texts : Array< RichTextItemResponse[]> = []
         if (direction=="R"){
             cell_mat_by_row.forEach( (target, r_idx) => {
-                const new_text_obj = evaluate_formula("R", formula, target, table_labels)
-                table_rows[r_idx+default_rowidx].table_row.cells.push(new_text_obj)
-                results_texts.push(new_text_obj)
+                if (valid_idxs.includes(target[0].r_idx)) {
+                    const new_text_obj = evaluate_formula("R", formula, target, table_labels)
+                    table_rows[r_idx+default_rowidx].table_row.cells.push(new_text_obj)
+                    results_texts.push(new_text_obj)
+                }
             })
             if (default_rowidx==1) {table_rows[0].table_row.cells.push(set_celldata_obj("text", info.label))}
         } else if (direction=="C") {
-            let new_cells = cell_mat_by_col.map( target => evaluate_formula("C", formula, target, table_labels) )
+            let new_cells = cell_mat_by_col.map( target => {
+                return (valid_idxs.includes(target[0].c_idx) )
+                    ? evaluate_formula("C", formula, target, table_labels)
+                    : set_celldata_obj("text", "")
+            })
             results_texts = [...new_cells]
             if (default_colidx > 0) {
                 if (default_colidx > 1) {
@@ -87,21 +98,120 @@ export function add_formula_to_table(
 }
 
 
+// 特定の数式を評価した結果のセルを追加する
+// 数式の設定 + 評価範囲の先頭の行・列のインデックス + 行基準の table block object のリスト → 数式を評価した結果のセルが行・列に追加された table block object
+export function add_formula_to_cell(
+    default_rowidx: number,
+    default_colidx: number,
+    table_rows: Array<TableRowBlockObject>,
+): Array<TableRowBlockObject>{
+
+    const table_labels: Record<string, Array<Array<RichTextItemResponse>|[]>> = {
+        "row": table_rows[0].table_row.cells,
+        "col": table_rows.map(row => row.table_row.cells[0])
+    }
+    const text_matrix = table_rows.map( row => row.table_row.cells.map(
+        cell => (cell.length) ? cell.map( ({plain_text}) => plain_text).join("") : "" )
+    )
+
+    text_matrix.forEach( (row, r_idx) => row.map( (text, c_idx) => {
+        // 命令の処理
+        if ( text!="" && text.startsWith("=")){       
+            let calucued_text = text
+            let is_call_only = false
+            // 命令文のパース：方向指定文字(C/R)、命令、範囲を示す数字(あるいは空文字列)を取り出す
+            const matched = text.match(/([CR])_([^\d\s]+)\((.*)\)/)
+            if (matched) {
+                // パースが成功 (命令文が存在する)
+                const [full_call, direction, formula, idxs] = matched
+                is_call_only = (text.length == full_call.length+1)
+
+                // 評価範囲のセルのリストを作成
+                let targets: Array<CellObject>
+                if (direction=="R" && idxs == "" ){
+                    const base_cells = table_rows[r_idx].table_row.cells.slice(default_colidx, c_idx)
+                    targets = base_cells.map( (cell, idx) => {
+                        const text = text_matrix[r_idx][idx+default_colidx]
+                        return {"cell":cell, r_idx, "c_idx":idx+default_colidx, text}
+                    })
+                } else if (direction=="R" && idxs != "") {
+                    const [start, end] = idxs.split(",").map(tx => Number(tx))
+                    const base_cells = table_rows[r_idx].table_row.cells.slice(start, end+1)
+                    targets = base_cells.map( (c, idx) => {
+                        const text = text_matrix[r_idx][idx+start]
+                        return {"cell":c, r_idx, "c_idx":idx+start, text}
+                    })
+                } else if (direction == "C" && idxs == "") {
+                    const base_cells = table_rows.slice(default_rowidx, r_idx).map( r => r.table_row.cells[c_idx])
+                    targets = base_cells.map( (c, idx) => {
+                        const text = text_matrix[idx+default_rowidx][c_idx]
+                        return {"cell":c, "r_idx":idx+default_rowidx, c_idx, text} }
+                    )
+                } else if (direction == "C" && idxs != "") {
+                    const [start, end] = idxs.split(",").map(tx => Number(tx))
+                    const base_cells = table_rows.slice(start, end+1).map( r => r.table_row.cells[c_idx])
+                    targets = base_cells.map( (c, idx) => {
+                        const text = text_matrix[idx+start][c_idx]
+                        return {"cell":c, "r_idx":idx+start, c_idx, text} }
+                    )
+                } else {
+                    throw new Error("formula が不適切です")
+                }
+                // 計算結果を得て、元の行列と text_mat の当該セルの中身を差し替える
+                const caluc_text_obj = evaluate_formula(direction, formula, targets, table_labels)
+                table_rows[r_idx].table_row.cells[c_idx] = caluc_text_obj
+                
+                calucued_text = text.slice(1).replace(full_call, caluc_text_obj[0].plain_text)
+                text_matrix[r_idx][c_idx] = calucued_text
+            }
+            
+            if (!is_call_only){
+                // セル指定( R2 や C11 など)を取り出し、指定しているセルの内容に置き換える
+                const specified_cells = calucued_text.match(/[RC]\d+/g)
+                if (specified_cells !== null) {
+                    specified_cells.forEach(speci => {
+                        (speci[0]=="R")
+                            ? calucued_text = calucued_text.replace(speci, text_matrix[Number(speci.slice(1))][c_idx])
+                            : calucued_text = calucued_text.replace(speci, text_matrix[r_idx][Number(speci.slice(1))])
+                        }
+                    )
+                }
+                    
+                // 四則演算なら eval してその結果を挿入  四則演算と評価できないなら eval せずにfail message を挿入
+                if (!calucued_text.match(/[^\d\+\-\*/\(\)\.]/g)) {
+                    const new_num = eval(calucued_text).toFixed(2)
+                    table_rows[r_idx].table_row.cells[c_idx] = set_celldata_obj("text", String(new_num))
+                    text_matrix[r_idx][c_idx] = new_num
+                } else {
+                    table_rows[r_idx].table_row.cells[c_idx] = set_celldata_obj("text", "不適切な数式")
+                    text_matrix[r_idx][c_idx] = "不適切な数式"
+                }
+            }
+        }
+    }) )
+    return table_rows
+}
+
+
 // 各行の先頭に、(指定したフォーマットで)上の行から順に番号を振る
 // 番号付けの設定 + 行基準の table block object のリスト → ラベル行には空セル、それ以外の行には連番セルを先頭に追加した table block object のリスト
 export function add_row_number(
     number_info: NumberingInfo,
-    table_rows: Array<TableRowBlockObject>)
+    table_rows: Array<TableRowBlockObject>,
+    default_rowidx: number
+)
 : Array<TableRowBlockObject> {
+    const label = (number_info.label) ? number_info.label : ""
+    const step = (number_info.step) ? number_info.step : 1
+    const start = (number_info.start_number) ? number_info.start_number : 1
+    const text = (number_info.text_format) ? number_info.text_format : "{num}"
     return  table_rows.map( (item, idx) => {
-        if (idx==0) {
-            const new_cells = [...[set_celldata_obj("text", "")], ...item.table_row.cells]
+        if (idx == default_rowidx-1) {
+            const new_cells = [...[set_celldata_obj("text", label)], ...item.table_row.cells]
             return {"object": "block", "type": item.type, "table_row":{"cells": new_cells}}
         } else {
-            const text = (number_info.text_format!="")
-                ? number_info.text_format.replace("{num}", String(idx))
-                : String(idx)
-            const new_cells = [...[set_celldata_obj("text", text)], ...item.table_row.cells]
+            const cell_text = text.replace("{num}", String(start+(idx-default_rowidx)*step ))
+            const new_cells = [...[set_celldata_obj("text", cell_text)], ...item.table_row.cells]
             return {"object": "block", "type": item.type, "table_row":{"cells": new_cells}}
         }
     })
@@ -142,6 +252,41 @@ function create_cel_matrix(
 }
 
 
+// 文字列から(必要なら)ラベル部分の切り出しを行い、レコードを経由して table row block のリストを作成
+// 文字列のリスト + 切り分けの設定 → table row block のリスト
+export function create_from_text(
+    texts: Array<string>,
+    options: ConvertInfo
+): Array<TableRowBlockObject> {
+    let table_rows: Array<TableRowBlockObject>
+    if (options.col_label){
+        // ラベル+セルのテキストの場合、セルごとに切り分けてレコードを作る
+        const sep = options.col_label.sep
+        const row_records: Array<Record<string, string>> = texts.map( tx =>{
+            return Object.fromEntries( tx.split(options.separation).map( t => t.split(sep) ) )
+        })
+
+        // ラベル行とセル行をそれぞれ作り、table row block としてまとめる
+        const unique_labels = [...new Set(row_records.map(rec => Object.keys(rec)).flat())]
+        const row_cells_list = row_records.map(rec => unique_labels.map(lb => {
+               return (lb in rec) ? set_celldata_obj("text", rec[lb])  : set_celldata_obj("text", "")
+            })
+        )
+        const header_row_cells = unique_labels.map(lb => set_celldata_obj("text", lb))
+        table_rows = [header_row_cells, ...row_cells_list].map(cells => {
+            return {"object":"block", "type":"table_row", "table_row":{"cells":cells}}
+        })
+    } else {
+        // セルのテキストのみの場合、そのままセルを作り、そのまま table row block を作る
+        const row_cells_list = texts.map(tx => tx.split(options.separation).map(t => set_celldata_obj("text", t)) )
+        table_rows = row_cells_list.map(cells => {
+            return {"object":"block", "type":"table_row", "table_row":{"cells":cells}}
+        })
+    }
+    return table_rows
+}
+
+
 // 最大値・最小値のセルに色付け
 // 色付け設定 + 色付け対象の先頭行・列のインデックス + 行基準の table row block のリスト → セル内のテキストを色付けした table row block のリスト
 export function change_text_color (
@@ -157,29 +302,32 @@ export function change_text_color (
     const limit_l = (limit_colidx < 0) ? table_rows[0].table_row.cells.length : limit_colidx
     const arranged_mat = create_cel_matrix(color_info.direction, table_rows, default_rowidx, default_colidx, limit_r, limit_l)
 
+    const valid_idxs = get_valid_indices(table_rows, color_info)
+
     if (color_info.max!="" || color_info.min!=""){
         arranged_mat.forEach( (targets) => {
             // 評価対象のセルを並び替え、先頭と末尾のテキストを取得し、それと値が等しいセルを取得する (同じ値のセルが複数ある場合に対応)
-            const sorted = targets.sort((a,b) => Number(a.text)-Number(b.text))
-            const [min_tx, max_tx] = [sorted[0].text, sorted[sorted.length-1].text]            
-            const min_cells = targets.filter(item => item.text==min_tx)
-            const max_cells = targets.filter(item => item.text==max_tx)
+            if ((color_info.direction=="R" && valid_idxs.includes(targets[0].r_idx) ) ||
+                (color_info.direction=="C" && valid_idxs.includes(targets[0].c_idx) ))
+            {   
+                const sorted = targets.sort((a,b) => Number(a.text)-Number(b.text))
+                const [min_tx, max_tx] = [sorted[0].text, sorted[sorted.length-1].text]            
+                const min_cells = targets.filter(item => item.text==min_tx)
+                const max_cells = targets.filter(item => item.text==max_tx)
 
-            if (color_info.max!=""){
-                max_cells.forEach(c => {
-                    if (c.cell.length) {
+                targets.forEach(c => {
+                    if (color_info.max!="" && max_cells.includes(c) && c.cell.length){
                         table_rows[c.r_idx].table_row.cells[c.c_idx].forEach(c => c.annotations.color= color_info.max as ApiColor)
                     }
-                })
-            }
-            if (color_info.min!="") {
-                min_cells.forEach(c => {
-                    if (c.cell.length) {
+                    else if (color_info.min!="" && min_cells.includes(c) && c.cell.length){
                         table_rows[c.r_idx].table_row.cells[c.c_idx].forEach(c => c.annotations.color= color_info.min as ApiColor)
+                    }
+                    else if (c.cell.length){
+                        table_rows[c.r_idx].table_row.cells[c.c_idx].forEach(c => c.annotations.color= "default")
                     }
                 })
             }
-        })
+        } )
     }
     return table_rows
 }
@@ -259,6 +407,44 @@ function evaluate_formula (
 }
 
 
+// 親要素を指定し、そこに含まれるリストのデータを取得する
+// 親要素を含んだURL → 親要素のid、子要素であるリスト要素のidのリスト・リスト要素のテキストのリスト
+export async function get_lists(
+    notion:Client,
+    url:string
+): Promise<{"texts_ids":Array<string>, "texts":Array<string>, "parent_id":string, "table_id":string}> {
+    let parent_id: string
+    if (!url.startsWith("https://")) {
+        parent_id = url
+    } else {
+        const matched = url.match(/so\/(.+)#(.+)/)
+        if (!matched) {throw new Error("URLのパースに失敗しました")}
+        parent_id = matched[2]
+    }
+    return await notion.blocks.children.list({ block_id: parent_id }).then( (response) => {
+        // 親要素以下の リスト要素を取得する
+        const texts: Array<string> = []
+        const texts_ids: Array<string> = []
+        let table_id =""
+        response.results.forEach(item => {
+            if ("type" in item) {
+                if (item.type=="bulleted_list_item") {
+                    texts_ids.push(item.id)
+                    texts.push(item.bulleted_list_item.rich_text.map(t => t.plain_text).join())
+                } else if (item.type=="numbered_list_item" ){
+                    texts_ids.push(item.id)
+                    texts.push(item.numbered_list_item.rich_text.map(t => t.plain_text).join())
+                } else if (item.type=="table" ) {
+                    table_id = item.id
+                }
+            }
+        })
+        if (!texts_ids.length) {throw new Error("子要素にリストブロックが見つかりません")}
+        return {texts_ids, texts, parent_id, table_id}
+    })
+}
+
+
 // 親要素を指定し、そこに含まれるテーブルに関する情報を取得する
 // 親要素を含んだURL → 親要素のid、子要素であるテーブルのid・ヘッダー情報・テーブル幅・行データそれぞれのリスト
 export async function get_tables_and_rows(notion:Client, url:string): Promise<TableRowResponces> {
@@ -310,6 +496,146 @@ export async function get_tables_and_rows(notion:Client, url:string): Promise<Ta
         )
         return {parent_id, table_id_list, header_info_list, table_width_list, rowobjs_lists}
     })
+}
+
+
+// 範囲指定の設定から、評価対象として適正な列あるいは行のインデックスのリストを作る
+// ラベル判定用の行データのリスト + 範囲指定を含んだオプションオブジェクト → インデックスのリスト
+function get_valid_indices(
+    table_rows: Array<TableRowBlockObject>,
+    options: ColorInfo | CallInfo
+): Array<number>{
+    let valid_idxs: Array<number> = []
+    const labels_for_r = table_rows.map(r => (r.table_row.cells[0].length) ? r.table_row.cells[0].map(t => t.plain_text).join() : "" )
+    const labels_for_l = table_rows[0].table_row.cells.map(c => (c.length) ? c.map(t => t.plain_text).join() : "" )
+    if (options.targets == "all") {
+        if (options.excludes){
+            if (typeof(options.excludes[0]) == "number") {
+                valid_idxs = [...Array(table_rows[0].table_row.cells.length).keys()]
+                valid_idxs = valid_idxs.filter(i => !(options.excludes as Array<number>).includes(i))
+            } else {
+                let base: Array<string>
+                if ("direction" in options) {
+                    base = (options.direction =="R") ? labels_for_r : labels_for_l
+                } else {
+                    base = (options.formula.split("_")[0] == "R")  ? labels_for_r : labels_for_l
+                }
+                base.forEach((lb, idx) => {
+                    if (!((options.excludes as Array<string>).includes(lb))) { valid_idxs.push(idx) }
+                })
+            }
+        } else {
+            valid_idxs = [...Array(table_rows[0].table_row.cells.length).keys()]
+        }
+    } else {
+        if (options.excludes) { throw new Error('targets が"all"以外のときは、excludes の指定はできません') }
+        if (typeof(options.targets[0]) == "number") {
+            valid_idxs = options.targets as Array<number>
+        } else {
+            let base: Array<string>
+            if ("direction" in options) {
+                base = (options.direction =="R") ? labels_for_r : labels_for_l
+            } else {
+                base = (options.formula.split("_")[0] == "R")  ? labels_for_r : labels_for_l
+            }
+            base.forEach((lb, idx) => {
+                if ((options.targets as Array<string>).includes(lb)) { valid_idxs.push(idx) }
+            })
+        }
+    }
+    return valid_idxs
+}
+
+
+
+// 結合
+// テーブルごとの行データ + ヘッダー設定 + テーブル幅 → 結合されたテーブル扱いの行データのリスト
+//      全てのテーブルにラベル行がないとき、テーブルはそのまま結合される
+//      ラベル行があるものと無いものが混合しているとき、ラベル行がないテーブルはその1つ上に位置するテーブルに合わせて結合される
+//      テーブル間に異なるラベル列がある場合も許容し、各行で元のテーブルにない部分は空セルで埋める
+export function join_tabels(
+    table_rows_lists: Array<Array<TableRowBlockObject>>,
+    header_info_list: Array<Array<boolean>>,
+    table_width_list: Array<number>
+) :Array<TableRowBlockObject> {
+
+    let new_rows: Array<Array<Array<RichTextItemResponse>|[]>>
+    if (! header_info_list.map( rowcol => rowcol[0] ).includes(true)) {
+        new_rows = table_rows_lists.map(lis => lis.map(row => row.table_row.cells)).flat()
+    } else if (header_info_list.map( rowcol => rowcol[0] ).includes(true) && header_info_list[0][0]==false) {
+        throw new Error("ラベル行を持つ行列が少なくとも1つある場合、一番上に位置する行列はラベル行を持つものにしてください")
+    } else {
+        type CellRecord = Record<string, Array<RichTextItemResponse>|[]>
+        const label_record_list: Array<CellRecord> = []
+        const row_records_list: Array<Array<CellRecord>> = []
+        table_rows_lists.forEach( (table_rows, idx) => {
+            const header_info = header_info_list[idx]
+            let label_rec: CellRecord
+            let rows = table_rows
+            if (header_info[0]==true) {
+                label_rec = Object.fromEntries(table_rows[0].table_row.cells.map( 
+                    c => (c.length) ? [c.map(t => t.plain_text).join(), c] : ["", c]
+                ))
+                label_record_list.push(label_rec)
+                rows = table_rows.slice(1)
+            } else {
+                label_rec = label_record_list[label_record_list.length-1]
+            }
+            const labels = [...Object.keys(label_rec)]
+            const row_records: Array<CellRecord> = rows.map(
+                row => Object.fromEntries( row.table_row.cells.map( (cell, idx) => [labels[idx], cell] ) )
+            )
+            row_records_list.push( row_records )
+        })
+
+        const unique_labels = [...new Set( label_record_list.map(rec => [...Object.keys(rec)]).flat() )]
+        let header_row : Array<[] | Array<RichTextItemResponse>>
+        let body_rows : Array<Array<Array<RichTextItemResponse>>>
+        if (unique_labels.length == table_width_list[0]) {
+            header_row = unique_labels.map( lb => label_record_list[0][lb])
+            body_rows = row_records_list.flat().map(rec => unique_labels.map(lb => rec[lb]))
+        } else {
+            const new_label_record: CellRecord = Object.fromEntries(label_record_list.map(rec => Object.entries(rec)).flat())
+            header_row =  unique_labels.map(lb => new_label_record[lb])
+            body_rows = row_records_list.flat().map(rec => unique_labels.map(lb => {
+                return (lb in rec) ? rec[lb] : set_celldata_obj("text","")
+            }) )
+        }
+        new_rows = [header_row, ...body_rows]
+    }
+    return new_rows.map(row => {
+        return {"object":"block", "type":"table_row", "table_row": {"cells":row}} as TableRowBlockObject
+    })
+}
+
+
+//
+//
+export function print_table(
+    data: Array<BlockObjectRequest>
+): void {
+    const texts = data.map(d => {
+        if ("table" in d){
+            const text_matrix = (d.table.children as Array<TableRowBlockObject>).map(row => {
+                return row.table_row.cells.map(
+                    cell => (cell.length) ? cell.map(t => t.plain_text).join() : " "
+                )
+            })
+            if (d.table.has_column_header) {
+                return text_matrix.slice(1).map( row => Object.fromEntries(row.map( (tx, idx) =>  [text_matrix[0][idx], tx])) )
+            } else {
+                return text_matrix.map( row => Object.fromEntries(row.map( (tx, idx) =>  [String(idx), tx])) )
+            }
+        } else if ("table_row" in d){
+            const text_list = (d.table_row.cells as Array<RichTextItemResponse[]|[]>).map(
+                cell => (cell.length) ? cell.map(t => t.plain_text).join() : " "
+            )
+            return  Object.fromEntries( text_list.map( (t,idx) => [String(idx), t]) )
+        } else if ("bulleted_list_item" in d){
+            return (d.bulleted_list_item.rich_text as RichTextItemResponse[]|[]).map( t => t.plain_text).join()
+        }
+    }).flat()
+    console.table(texts)
 }
 
 

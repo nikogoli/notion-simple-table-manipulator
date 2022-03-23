@@ -14,14 +14,28 @@ type FormulaCall = "R_SUM" | "R_AVERAGE" | "R_COUNT" |
 
 
 // 操作と設定の組
-export type ManipulateSet = {"manipulation":"sort", "options": SortInfo} | {"manipulation":"numbering", "options": NumberingInfo} |
-                {"manipulation":"colored", "options": ColorInfo} | {"manipulation":"fomula", "options": FormulaInfo} |
-                {"manipulation":"transpose", "options": null}// | {"manipulation":"separate", "options": SeparateInfo}
+export type ManipulateSet = {"manipulation":"sort", "options": SortInfo} | 
+                            {"manipulation":"numbering", "options": NumberingInfo|null} |
+                            {"manipulation":"colored", "options": ColorInfo} |
+                            {"manipulation":"fomula", "options": FormulaInfo} |
+                            {"manipulation":"transpose", "options": null} |
+                            {"manipulation":"calculate", "options": null}
+                            // | {"manipulation":"separate", "options": SeparateInfo}
 
 
-interface CallInfo {
+
+// リストから追加する際の設定
+export interface AppendFromInfo {
+    col_label: {sep: string} | false
+    separation: string
+}                         
+
+
+export interface CallInfo {
     formula: FormulaCall
     label: string
+    targets : "all" | Array<string> | Array<number>
+    excludes? : Array<string> | Array<number>
     max?: ApiColor
     min?:ApiColor
 }
@@ -39,10 +53,19 @@ export interface CellObject {
 // テキストの色変更の設定をまとめたもの
 export interface ColorInfo {
     direction : "R" | "C"
+    targets : "all" | Array<string> | Array<number>
+    excludes? : Array<string> | Array<number>
     max?: ApiColor | ""
     min?: ApiColor | ""
 }
 
+
+// リストから変換する際の設定をまとめたもの
+export interface ConvertInfo {
+    row_label: boolean
+    col_label: {sep: string} | false
+    separation: string
+}
 
 
 // 一様な数式行・列の追加の設定をまとまるもの (暫定)
@@ -62,7 +85,10 @@ export interface ImportInfo {
 
 // 連番の設定をまとめるもの (暫定)
 export interface NumberingInfo {
-    text_format: "{num}" | string
+    label?: string
+    start_number?: number
+    step?: number
+    text_format?: "{num}" | string
 }
 
 
