@@ -88,6 +88,95 @@ export function add_formula_to_table(
 }
 
 
+// 特定の数式を評価した結果のセルを追加する
+// 数式の設定 + 評価範囲の先頭の行・列のインデックス + 行基準の table block object のリスト → 数式を評価した結果のセルが行・列に追加された table block object
+export function add_formula_to_cell(
+    default_rowidx: number,
+    default_colidx: number,
+    table_rows: Array<TableRowBlockObject>,
+): Array<TableRowBlockObject>{
+
+    const table_labels: Record<string, Array<Array<RichTextItemResponse>|[]>> = {
+        "row": table_rows[0].table_row.cells,
+        "col": table_rows.map(row => row.table_row.cells[0])
+    }
+    const text_matrix = table_rows.map( row => row.table_row.cells.map(
+        cell => (cell.length) ? cell.map( ({plain_text}) => plain_text).join("") : "" )
+    )
+
+    table_rows.forEach( (row, r_idx) => row.table_row.cells.map( (cell, c_idx) => {
+        // 命令の処理
+        if ( cell.length!=0 && cell[0].plain_text.startsWith("=")){
+            const text = cell.map(t => t.plain_text).join()
+            
+            // 命令文のパース：方向指定文字(C/R)、命令、範囲を示す数字(あるいは空文字列)を取り出す
+            const matched = text.match(/=([CR])_([^\d\s]+)\((.*)\)/)
+            if (!matched) {
+                // パースが失敗 = 命令文なしのセル指定があるとき
+                // セル指定( R2 や C11 など)を取り出し、指定しているセルの内容に置き換える
+                const specified_cells = text.slice(1).match(/[RC]\d+/g)
+                let new_text = text
+                if (specified_cells !== null) {
+                    specified_cells.forEach(cellnum => {
+                        (cellnum[0]=="R")
+                            ? new_text = new_text.replace(cellnum, text_matrix[Number(cellnum.slice(1))][c_idx])
+                            : new_text = new_text.replace(cellnum, text_matrix[r_idx][Number(cellnum.slice(1))])
+                    }
+                )}
+                
+                // 四則演算なら eval してその結果を挿入する 四則演算にとどまらないなら eval せずにエラーメッセージを挿入
+                if (!new_text.slice(1).match(/[^\d\+\-\*/\(\)\.]/g)) {
+                    const new_num = eval(new_text.slice(1)).toFixed(2)
+                    table_rows[r_idx].table_row.cells[c_idx] = set_celldata_obj("text", String(new_num))
+                    text_matrix[r_idx][c_idx] = new_num
+                } else {
+                    table_rows[r_idx].table_row.cells[c_idx] = set_celldata_obj("text", "不適切な数式")
+                    text_matrix[r_idx][c_idx] = "不適切な数式"
+                }
+            } else {
+                // パースが成功
+                const [direction, formula, idxs] = matched.slice(1)
+                let targets: Array<CellObject>
+                if (direction=="R"){
+                    if (idxs == "") {
+                        targets = table_rows[r_idx].table_row.cells.slice(default_colidx, c_idx).map(
+                            (c, idx) => { return {"cell":c, r_idx, "c_idx":idx+default_colidx,
+                                                 "text":text_matrix[r_idx][idx+default_colidx]} }
+                        )
+                    } else {
+                        const [start, end] = idxs.split(",").map(tx => Number(tx))
+                        targets = table_rows[r_idx].table_row.cells.slice(start, end+1).map(
+                            (c, idx) => { return {"cell":c, r_idx, "c_idx":idx+start,
+                                                "text":text_matrix[r_idx][idx+start]} }
+                        )
+                    }
+                } else if (direction == "C") {
+                    if (idxs == "") {
+                        targets = table_rows.slice(default_rowidx, r_idx).map( row => row.table_row.cells[c_idx]).map(
+                            (c, idx) => { return {"cell":c, "r_idx":idx+default_rowidx,
+                                                    c_idx, "text":text_matrix[idx+default_rowidx][c_idx]} }
+                        )
+                    } else {
+                        const [start, end] = idxs.split(",").map(tx => Number(tx))
+                        targets = table_rows.slice(start, end+1).map( row => row.table_row.cells[c_idx]).map(
+                            (c, idx) => { return {"cell":c, "r_idx":idx+start,
+                                                     c_idx, "text":text_matrix[idx+start][c_idx]} }
+                        )
+                    }
+                } else {
+                    throw new Error("formula が不適切です")
+                }
+                const new_text_obj = evaluate_formula(direction, formula, targets, table_labels)
+                table_rows[r_idx].table_row.cells[c_idx] = new_text_obj
+                text_matrix[r_idx][c_idx] = new_text_obj[0].plain_text
+            }
+        }
+    }) )
+
+    return table_rows
+}
+
+
 // 各行の先頭に、(指定したフォーマットで)上の行から順に番号を振る
 // 番号付けの設定 + 行基準の table block object のリスト → ラベル行には空セル、それ以外の行には連番セルを先頭に追加した table block object のリスト
 export function add_row_number(

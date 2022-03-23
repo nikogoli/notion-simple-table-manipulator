@@ -18,6 +18,7 @@ import {
 
 import {
     add_formula_to_table,
+    add_formula_to_cell,
     add_row_number,
     change_text_color,
     create_from_text,
@@ -123,6 +124,16 @@ export async function table_manipulations(
             children: [table_props]
         })
     })
+}
+
+
+// 各行・列に対して一様に数式評価を行う行・列を追加する
+export async function calculate_formula_cells(
+    notion: Client,
+    url: string,
+    inspect = false
+    ): Promise<AppendBlockChildrenResponse> {
+    return await table_manipulations(notion, url, [{"manipulation":"calculate", "options":null}], inspect)
 }
 
 
@@ -280,6 +291,10 @@ function maltiple_manipulation (
             } );
             
             [eval_limit_col, eval_limit_row] = [eval_limit_row, eval_limit_col]
+        }
+        else if (call.manipulation == "calculate") {
+            // セルの命令に従い計算
+            table_rows = add_formula_to_cell(new_def_rowidx, new_def_colidx, table_rows)
         }
     })
     return table_rows
