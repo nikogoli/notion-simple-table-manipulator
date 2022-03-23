@@ -292,34 +292,7 @@ export function change_text_color (
     const limit_l = (limit_colidx < 0) ? table_rows[0].table_row.cells.length : limit_colidx
     const arranged_mat = create_cel_matrix(color_info.direction, table_rows, default_rowidx, default_colidx, limit_r, limit_l)
 
-    let valid_idxs: Array<number> = []
-    const labels_for_r = table_rows.map(r => (r.table_row.cells[0].length) ? r.table_row.cells[0].map(t => t.plain_text).join() : "" )
-    const labels_for_l = table_rows[0].table_row.cells.map(c => (c.length) ? c.map(t => t.plain_text).join() : "" )
-    if (color_info.targets == "all") {
-        if (color_info.excludes){
-            if (typeof(color_info.excludes[0]) == "number") {
-                valid_idxs = [...Array(table_rows[0].table_row.cells.length).keys()]
-                valid_idxs = valid_idxs.filter(i => !(color_info.excludes as Array<number>).includes(i))
-            } else {
-                const base = (color_info.direction=="R") ? labels_for_r : labels_for_l
-                base.forEach((lb, idx) => {
-                    if (!((color_info.excludes as Array<string>).includes(lb))) { valid_idxs.push(idx) }
-                })
-            }
-        } else {
-            valid_idxs = [...Array(table_rows[0].table_row.cells.length).keys()]
-        }
-    } else {
-        if (color_info.excludes) { throw new Error('targets が"all"以外のときは、excludes の指定はできません') }
-        if (typeof(color_info.targets[0]) == "number") {
-            valid_idxs = color_info.targets as Array<number>
-        } else {
-            const base = (color_info.direction=="R") ? labels_for_r : labels_for_l
-            base.forEach((lb, idx) => {
-                if ((color_info.targets as Array<string>).includes(lb)) { valid_idxs.push(idx) }
-            })
-        }
-    }
+    const valid_idxs = get_valid_indices(table_rows, color_info)
 
     if (color_info.max!="" || color_info.min!=""){
         arranged_mat.forEach( (targets) => {
@@ -514,6 +487,55 @@ export async function get_tables_and_rows(notion:Client, url:string): Promise<Ta
         return {parent_id, table_id_list, header_info_list, table_width_list, rowobjs_lists}
     })
 }
+
+
+// 範囲指定の設定から、評価対象として適正な列あるいは行のインデックスのリストを作る
+// ラベル判定用の行データのリスト + 範囲指定を含んだオプションオブジェクト → インデックスのリスト
+function get_valid_indices(
+    table_rows: Array<TableRowBlockObject>,
+    options: ColorInfo | CallInfo
+): Array<number>{
+    let valid_idxs: Array<number> = []
+    const labels_for_r = table_rows.map(r => (r.table_row.cells[0].length) ? r.table_row.cells[0].map(t => t.plain_text).join() : "" )
+    const labels_for_l = table_rows[0].table_row.cells.map(c => (c.length) ? c.map(t => t.plain_text).join() : "" )
+    if (options.targets == "all") {
+        if (options.excludes){
+            if (typeof(options.excludes[0]) == "number") {
+                valid_idxs = [...Array(table_rows[0].table_row.cells.length).keys()]
+                valid_idxs = valid_idxs.filter(i => !(options.excludes as Array<number>).includes(i))
+            } else {
+                let base: Array<string>
+                if ("direction" in options) {
+                    base = (options.direction =="R") ? labels_for_r : labels_for_l
+                } else {
+                    base = (options.formula.split("_")[0] == "R")  ? labels_for_r : labels_for_l
+                }
+                base.forEach((lb, idx) => {
+                    if (!((options.excludes as Array<string>).includes(lb))) { valid_idxs.push(idx) }
+                })
+            }
+        } else {
+            valid_idxs = [...Array(table_rows[0].table_row.cells.length).keys()]
+        }
+    } else {
+        if (options.excludes) { throw new Error('targets が"all"以外のときは、excludes の指定はできません') }
+        if (typeof(options.targets[0]) == "number") {
+            valid_idxs = options.targets as Array<number>
+        } else {
+            let base: Array<string>
+            if ("direction" in options) {
+                base = (options.direction =="R") ? labels_for_r : labels_for_l
+            } else {
+                base = (options.formula.split("_")[0] == "R")  ? labels_for_r : labels_for_l
+            }
+            base.forEach((lb, idx) => {
+                if ((options.targets as Array<string>).includes(lb)) { valid_idxs.push(idx) }
+            })
+        }
+    }
+    return valid_idxs
+}
+
 
 
 // 結合
