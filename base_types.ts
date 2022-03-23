@@ -18,7 +18,8 @@ export type ManipulateSet = {"manipulation":"sort", "options": SortInfo} |
                             {"manipulation":"numbering", "options": NumberingInfo|null} |
                             {"manipulation":"colored", "options": ColorInfo} |
                             {"manipulation":"fomula", "options": FormulaInfo} |
-                            {"manipulation":"transpose", "options": null}
+                            {"manipulation":"transpose", "options": null} |
+                            {"manipulation":"calculate", "options": null}
                             // | {"manipulation":"separate", "options": SeparateInfo}
 
 
