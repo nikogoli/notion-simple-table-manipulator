@@ -25,6 +25,7 @@ import {
     get_lists,
     get_tables_and_rows,
     join_tabels,
+    print_table,
     separate_table,
     set_celldata_obj,
     sort_tablerows_by_col,
@@ -72,6 +73,7 @@ export async function append_from_list(
                     "children": additional_rows
                 }
             } as BlockObjectRequest
+            print_table([pasedu_table])
             return Promise.resolve({ "results": [pasedu_table] } as AppendBlockChildrenResponse )
         }
 
@@ -115,6 +117,7 @@ export async function table_manipulations(
         
         // inspcet == true のときは、リクエストには投げずにそのデータを返す
         if (inspect) {
+            print_table([table_props])
             return Promise.resolve({ "results": [table_props] } as AppendBlockChildrenResponse)
         }
         
@@ -171,6 +174,7 @@ export async function conversion_from_list(
                 
         // inspcet == true のときは、リクエストには投げずにそのデータを返す
         if (inspect) {
+            print_table([table_props])
             return Promise.resolve({ "results": [table_props] } as AppendBlockChildrenResponse)
         }
 
@@ -218,6 +222,7 @@ export async function conversion_to_list(
                 
         // inspcet == true のときは、リクエストには投げずにそのデータを返す
         if (inspect) {
+            print_table(list_items)
             return Promise.resolve({ "results": list_items } as AppendBlockChildrenResponse)
         }
 
@@ -359,6 +364,7 @@ export async function table_from_file(
                 
         // inspcet == true のときは、リクエストには投げずにそのデータを返す
         if (inspect) {
+            print_table([table_props])
             return Promise.resolve({ "results": [table_props] } as AppendBlockChildrenResponse)
         }
 
@@ -414,6 +420,7 @@ export async function table_joining(
         
         // inspcet == true のときは、リクエストには投げずにそのデータを返す
         if (inspect) {
+            print_table([table_props])
             return Promise.resolve({ "results": [table_props] } as AppendBlockChildrenResponse)
         }
         
@@ -477,6 +484,7 @@ export async function table_separation (
 
         // inspcet == true のときは、リクエストには投げずにそのデータを返す
         if (inspect) {
+            print_table(table_props_list)
             return Promise.resolve({ "results": table_props_list } as AppendBlockChildrenResponse)
         }
         // 親要素にテーブルを追加

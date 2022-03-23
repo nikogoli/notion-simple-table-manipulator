@@ -3,6 +3,7 @@ import { Client } from "https://deno.land/x/notion_sdk/src/mod.ts";
 import { 
     ApiColor,
     BlockObjectResponse,
+    BlockObjectRequest,
     PartialBlockObjectResponse,
     RichTextItemResponse,
 } from "https://deno.land/x/notion_sdk/src/api-endpoints.ts"
@@ -605,6 +606,36 @@ export function join_tabels(
     return new_rows.map(row => {
         return {"object":"block", "type":"table_row", "table_row": {"cells":row}} as TableRowBlockObject
     })
+}
+
+
+//
+//
+export function print_table(
+    data: Array<BlockObjectRequest>
+): void {
+    const texts = data.map(d => {
+        if ("table" in d){
+            const text_matrix = (d.table.children as Array<TableRowBlockObject>).map(row => {
+                return row.table_row.cells.map(
+                    cell => (cell.length) ? cell.map(t => t.plain_text).join() : " "
+                )
+            })
+            if (d.table.has_column_header) {
+                return text_matrix.slice(1).map( row => Object.fromEntries(row.map( (tx, idx) =>  [text_matrix[0][idx], tx])) )
+            } else {
+                return text_matrix.map( row => Object.fromEntries(row.map( (tx, idx) =>  [String(idx), tx])) )
+            }
+        } else if ("table_row" in d){
+            const text_list = (d.table_row.cells as Array<RichTextItemResponse[]|[]>).map(
+                cell => (cell.length) ? cell.map(t => t.plain_text).join() : " "
+            )
+            return  Object.fromEntries( text_list.map( (t,idx) => [String(idx), t]) )
+        } else if ("bulleted_list_item" in d){
+            return (d.bulleted_list_item.rich_text as RichTextItemResponse[]|[]).map( t => t.plain_text).join()
+        }
+    }).flat()
+    console.table(texts)
 }
 
 
