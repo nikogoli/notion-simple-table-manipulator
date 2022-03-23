@@ -8,6 +8,7 @@ import {
 } from "https://deno.land/x/notion_sdk/src/api-endpoints.ts"
 
 import {
+    CallInfo,
     CellObject,
     ColorInfo,
     ConvertInfo,
@@ -43,16 +44,24 @@ export function add_formula_to_table(
 
     info.formula_list.forEach(info => {
         const [direction, formula] = info.formula.split("_")
+        const valid_idxs = get_valid_indices(table_rows, info)
+
         let results_texts : Array< RichTextItemResponse[]> = []
         if (direction=="R"){
             cell_mat_by_row.forEach( (target, r_idx) => {
-                const new_text_obj = evaluate_formula("R", formula, target, table_labels)
-                table_rows[r_idx+default_rowidx].table_row.cells.push(new_text_obj)
-                results_texts.push(new_text_obj)
+                if (valid_idxs.includes(target[0].r_idx)) {
+                    const new_text_obj = evaluate_formula("R", formula, target, table_labels)
+                    table_rows[r_idx+default_rowidx].table_row.cells.push(new_text_obj)
+                    results_texts.push(new_text_obj)
+                }
             })
             if (default_rowidx==1) {table_rows[0].table_row.cells.push(set_celldata_obj("text", info.label))}
         } else if (direction=="C") {
-            let new_cells = cell_mat_by_col.map( target => evaluate_formula("C", formula, target, table_labels) )
+            let new_cells = cell_mat_by_col.map( target => {
+                return (valid_idxs.includes(target[0].c_idx) )
+                    ? evaluate_formula("C", formula, target, table_labels)
+                    : set_celldata_obj("text", "")
+            })
             results_texts = [...new_cells]
             if (default_colidx > 0) {
                 if (default_colidx > 1) {
