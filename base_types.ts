@@ -31,9 +31,11 @@ export interface AppendFromInfo {
 }                         
 
 
-interface CallInfo {
+export interface CallInfo {
     formula: FormulaCall
     label: string
+    targets : "all" | Array<string> | Array<number>
+    excludes? : Array<string> | Array<number>
     max?: ApiColor
     min?:ApiColor
 }
