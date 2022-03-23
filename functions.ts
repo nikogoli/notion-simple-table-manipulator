@@ -104,75 +104,81 @@ export function add_formula_to_cell(
         cell => (cell.length) ? cell.map( ({plain_text}) => plain_text).join("") : "" )
     )
 
-    table_rows.forEach( (row, r_idx) => row.table_row.cells.map( (cell, c_idx) => {
+    text_matrix.forEach( (row, r_idx) => row.map( (text, c_idx) => {
         // 命令の処理
-        if ( cell.length!=0 && cell[0].plain_text.startsWith("=")){
-            const text = cell.map(t => t.plain_text).join()
-            
+        if ( text!="" && text.startsWith("=")){       
+            let calucued_text = text
+            let is_call_only = false
             // 命令文のパース：方向指定文字(C/R)、命令、範囲を示す数字(あるいは空文字列)を取り出す
-            const matched = text.match(/=([CR])_([^\d\s]+)\((.*)\)/)
-            if (!matched) {
-                // パースが失敗 = 命令文なしのセル指定があるとき
-                // セル指定( R2 や C11 など)を取り出し、指定しているセルの内容に置き換える
-                const specified_cells = text.slice(1).match(/[RC]\d+/g)
-                let new_text = text
-                if (specified_cells !== null) {
-                    specified_cells.forEach(cellnum => {
-                        (cellnum[0]=="R")
-                            ? new_text = new_text.replace(cellnum, text_matrix[Number(cellnum.slice(1))][c_idx])
-                            : new_text = new_text.replace(cellnum, text_matrix[r_idx][Number(cellnum.slice(1))])
-                    }
-                )}
+            const matched = text.match(/([CR])_([^\d\s]+)\((.*)\)/)
+            if (matched) {
+                // パースが成功 (命令文が存在する)
+                const [full_call, direction, formula, idxs] = matched
+                is_call_only = (text.length == full_call.length+1)
+
+                // 評価範囲のセルのリストを作成
+                let targets: Array<CellObject>
+                if (direction=="R" && idxs == "" ){
+                    const base_cells = table_rows[r_idx].table_row.cells.slice(default_colidx, c_idx)
+                    targets = base_cells.map( (cell, idx) => {
+                        const text = text_matrix[r_idx][idx+default_colidx]
+                        return {"cell":cell, r_idx, "c_idx":idx+default_colidx, text}
+                    })
+                } else if (direction=="R" && idxs != "") {
+                    const [start, end] = idxs.split(",").map(tx => Number(tx))
+                    const base_cells = table_rows[r_idx].table_row.cells.slice(start, end+1)
+                    targets = base_cells.map( (c, idx) => {
+                        const text = text_matrix[r_idx][idx+start]
+                        return {"cell":c, r_idx, "c_idx":idx+start, text}
+                    })
+                } else if (direction == "C" && idxs == "") {
+                    const base_cells = table_rows.slice(default_rowidx, r_idx).map( r => r.table_row.cells[c_idx])
+                    targets = base_cells.map( (c, idx) => {
+                        const text = text_matrix[idx+default_rowidx][c_idx]
+                        return {"cell":c, "r_idx":idx+default_rowidx, c_idx, text} }
+                    )
+                } else if (direction == "C" && idxs != "") {
+                    const [start, end] = idxs.split(",").map(tx => Number(tx))
+                    const base_cells = table_rows.slice(start, end+1).map( r => r.table_row.cells[c_idx])
+                    targets = base_cells.map( (c, idx) => {
+                        const text = text_matrix[idx+start][c_idx]
+                        return {"cell":c, "r_idx":idx+start, c_idx, text} }
+                    )
+                } else {
+                    throw new Error("formula が不適切です")
+                }
+                // 計算結果を得て、元の行列と text_mat の当該セルの中身を差し替える
+                const caluc_text_obj = evaluate_formula(direction, formula, targets, table_labels)
+                table_rows[r_idx].table_row.cells[c_idx] = caluc_text_obj
                 
-                // 四則演算なら eval してその結果を挿入する 四則演算にとどまらないなら eval せずにエラーメッセージを挿入
-                if (!new_text.slice(1).match(/[^\d\+\-\*/\(\)\.]/g)) {
-                    const new_num = eval(new_text.slice(1)).toFixed(2)
+                calucued_text = text.slice(1).replace(full_call, caluc_text_obj[0].plain_text)
+                text_matrix[r_idx][c_idx] = calucued_text
+            }
+            
+            if (!is_call_only){
+                // セル指定( R2 や C11 など)を取り出し、指定しているセルの内容に置き換える
+                const specified_cells = calucued_text.match(/[RC]\d+/g)
+                if (specified_cells !== null) {
+                    specified_cells.forEach(speci => {
+                        (speci[0]=="R")
+                            ? calucued_text = calucued_text.replace(speci, text_matrix[Number(speci.slice(1))][c_idx])
+                            : calucued_text = calucued_text.replace(speci, text_matrix[r_idx][Number(speci.slice(1))])
+                        }
+                    )
+                }
+                    
+                // 四則演算なら eval してその結果を挿入  四則演算と評価できないなら eval せずにfail message を挿入
+                if (!calucued_text.match(/[^\d\+\-\*/\(\)\.]/g)) {
+                    const new_num = eval(calucued_text).toFixed(2)
                     table_rows[r_idx].table_row.cells[c_idx] = set_celldata_obj("text", String(new_num))
                     text_matrix[r_idx][c_idx] = new_num
                 } else {
                     table_rows[r_idx].table_row.cells[c_idx] = set_celldata_obj("text", "不適切な数式")
                     text_matrix[r_idx][c_idx] = "不適切な数式"
                 }
-            } else {
-                // パースが成功
-                const [direction, formula, idxs] = matched.slice(1)
-                let targets: Array<CellObject>
-                if (direction=="R"){
-                    if (idxs == "") {
-                        targets = table_rows[r_idx].table_row.cells.slice(default_colidx, c_idx).map(
-                            (c, idx) => { return {"cell":c, r_idx, "c_idx":idx+default_colidx,
-                                                 "text":text_matrix[r_idx][idx+default_colidx]} }
-                        )
-                    } else {
-                        const [start, end] = idxs.split(",").map(tx => Number(tx))
-                        targets = table_rows[r_idx].table_row.cells.slice(start, end+1).map(
-                            (c, idx) => { return {"cell":c, r_idx, "c_idx":idx+start,
-                                                "text":text_matrix[r_idx][idx+start]} }
-                        )
-                    }
-                } else if (direction == "C") {
-                    if (idxs == "") {
-                        targets = table_rows.slice(default_rowidx, r_idx).map( row => row.table_row.cells[c_idx]).map(
-                            (c, idx) => { return {"cell":c, "r_idx":idx+default_rowidx,
-                                                    c_idx, "text":text_matrix[idx+default_rowidx][c_idx]} }
-                        )
-                    } else {
-                        const [start, end] = idxs.split(",").map(tx => Number(tx))
-                        targets = table_rows.slice(start, end+1).map( row => row.table_row.cells[c_idx]).map(
-                            (c, idx) => { return {"cell":c, "r_idx":idx+start,
-                                                     c_idx, "text":text_matrix[idx+start][c_idx]} }
-                        )
-                    }
-                } else {
-                    throw new Error("formula が不適切です")
-                }
-                const new_text_obj = evaluate_formula(direction, formula, targets, table_labels)
-                table_rows[r_idx].table_row.cells[c_idx] = new_text_obj
-                text_matrix[r_idx][c_idx] = new_text_obj[0].plain_text
             }
         }
     }) )
-
     return table_rows
 }
 
