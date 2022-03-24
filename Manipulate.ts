@@ -52,10 +52,11 @@ export class TableManipulator {
         if (!info.url.startsWith("https://")) {
             this.block_id = info.url
         } else {
-            const matched = info.url.match(/so\/(.+)#(.+)/)
+            const matched = info.url.match(/[\w]{32}/g)
             if (!matched) {throw new Error("URLのパースに失敗しました")}
-            this.block_id = matched[2]
+            this.block_id = matched[matched.length-1]
         }
+        console.log(`Block Id is: "${this.block_id}"`)
     }
 
     public readonly notion_with_id = {
