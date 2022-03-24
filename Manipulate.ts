@@ -5,7 +5,7 @@ import { BlockObjectRequest,
 import {
     ManipulateSet,
     ColorInfo,
-    ConvertFromInfo,
+    ConvertInfo,
     FormulaInfo,
     ImportInfo,
     NumberingInfo,
