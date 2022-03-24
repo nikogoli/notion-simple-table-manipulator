@@ -2,7 +2,18 @@ import { Client } from "https://deno.land/x/notion_sdk/src/mod.ts";
 import { BlockObjectRequest,
         AppendBlockChildrenResponse,
         GetBlockParameters,
-        QueryDatabaseParameters
+        QueryDatabaseParameters,
+        UpdateBlockParameters,
+        DeleteBlockParameters,
+        AppendBlockChildrenParameters,
+        ListBlockChildrenParameters,
+        GetDatabaseParameters,
+        CreateDatabaseParameters,
+        UpdateDatabaseParameters,
+        CreatePageParameters,
+        GetPageParameters,
+        UpdatePageParameters,
+        GetPagePropertyParameters,
 } from "https://deno.land/x/notion_sdk/src/api-endpoints.ts";
 
 import {
@@ -70,20 +81,52 @@ export class TableManipulator {
             retrieve : ( (args: WithoutId<GetBlockParameters>) => {
                 return this.notion.blocks.retrieve({"block_id":this.block_id, ...args})
             } ),
-            update : ( () => { return this.notion.blocks.update({"block_id":this.block_id}) } ),
-            delete : ( () => { return this.notion.blocks.delete({"block_id":this.block_id}) } ),
+            update : ( ( args: WithoutId<UpdateBlockParameters> ) => {
+                return this.notion.blocks.update({"block_id":this.block_id, ...args})
+            } ),
+            delete : ( ( args: WithoutId<DeleteBlockParameters> ) => { 
+                return this.notion.blocks.delete({"block_id":this.block_id, ...args})
+            } ),
             children : {
-                append: ( (children: Array<BlockObjectRequest>) => {
-                    return this.notion.blocks.children.append({"block_id":this.block_id, children})
+                append: ( ( args: WithoutId<AppendBlockChildrenParameters>) => {
+                    return this.notion.blocks.children.append({"block_id":this.block_id, ...args})
                 } ),
-                list: ( () => { return this.notion.blocks.children.list({"block_id":this.block_id}) } )
+                list: (  (args: WithoutId<ListBlockChildrenParameters>)  => {
+                    return this.notion.blocks.children.list({"block_id":this.block_id, ...args})
+                } )
             }
         },
         databases: {
-            retrieve : ( () => { return this.notion.databases.retrieve({"database_id":this.block_id}) } ),
+            retrieve : ( ( args: WithoutId<GetDatabaseParameters> ) => {
+                return this.notion.databases.retrieve({"database_id":this.block_id, ...args})
+            } ),
             query : ( (args: WithoutId<QueryDatabaseParameters>) => {
                 return this.notion.databases.query({"database_id":this.block_id, ...args})
+            } ),
+            create : ( ( args: Omit<CreateDatabaseParameters, "parent">) => {
+                return this.notion.databases.create({"parent": {"type":"page_id", "page_id":this.block_id}, ...args})
+            }),
+            update : ( ( args: WithoutId<UpdateDatabaseParameters>) => {
+                return this.notion.databases.update({"database_id":this.block_id, ...args})
             } )
+        },
+        pages: {
+            create_in_page: ( ( args: Omit<CreatePageParameters, "parent"> ) => {
+                return this.notion.pages.create(
+                    { "parent": {"page_id":this.block_id, "type":"page_id" }, ...args }
+                )
+            }),
+            retrieve : ( ( args: WithoutId<GetPageParameters> ) => {
+                return this.notion.pages.retrieve( {"page_id":this.block_id, ...args} )
+            }),
+            update : ( ( args: WithoutId<UpdatePageParameters>) => {
+                return this.notion.pages.update({"page_id":this.block_id, ...args})
+            }),
+            properties : {
+                retrieve : ( ( args: WithoutId<GetPagePropertyParameters>) => {
+                    return this.notion.pages.properties.retrieve({"page_id":this.block_id, ...args})
+                })
+            }
         }
     }
 
