@@ -37,6 +37,7 @@ import {
     get_lists,
     get_tables_and_rows,
     join_tabels,
+    print_table,
     separate_table,
     set_celldata_obj,
     sort_tablerows_by_col,
@@ -130,6 +131,26 @@ export class TableManipulator {
         }
     }
 
+
+    async #append_or_inspect(
+        block_is: string,
+        data_list: Array<BlockObjectRequest>,
+        inspect: boolean | undefined
+    ): Promise<AppendBlockChildrenResponse> {
+        // inspcet == true のときは、リクエストには投げずにそのデータを返す
+        if (inspect) {
+            print_table(data_list)
+            return Promise.resolve({ "results": data_list } as AppendBlockChildrenResponse)
+        }
+        
+        // 親要素にテーブルを追加
+        return await this.notion.blocks.children.append({
+            block_id: block_is,
+            children: data_list
+        })
+    }
+
+
     public async table_manipulations(
         {   calls,
             inspect }: GenericCall
@@ -156,16 +177,7 @@ export class TableManipulator {
                 }
             } as BlockObjectRequest
             
-            // inspcet == true のときは、リクエストには投げずにそのデータを返す
-            if (inspect) {
-                return Promise.resolve({ "results": [table_props] } as AppendBlockChildrenResponse)
-            }
-            
-            // 親要素にテーブルを追加
-            return await this.notion.blocks.children.append({
-                block_id: response.parent_id,
-                children: [table_props]
-            })
+            return await this.#append_or_inspect(response.parent_id, [table_props], inspect)
         })
     }
 
