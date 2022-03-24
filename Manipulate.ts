@@ -1,6 +1,9 @@
 import { Client } from "https://deno.land/x/notion_sdk/src/mod.ts";
 import { BlockObjectRequest,
-        AppendBlockChildrenResponse } from "https://deno.land/x/notion_sdk/src/api-endpoints.ts";
+        AppendBlockChildrenResponse,
+        GetBlockParameters,
+        QueryDatabaseParameters
+} from "https://deno.land/x/notion_sdk/src/api-endpoints.ts";
 
 import {
     ManipulateSet,
@@ -41,6 +44,9 @@ export interface GenericCall {
 }
 
 
+type WithoutId<P> =  Omit<P, "block_id" | "database_id" | "page_id"> 
+
+
 export class TableManipulator {
     notion : Client
     url : string
@@ -61,7 +67,23 @@ export class TableManipulator {
 
     public readonly notion_with_id = {
         blocks : {
-            retrieve : ( () => {return this.notion.blocks.retrieve({"block_id":this.block_id})})
+            retrieve : ( (args: WithoutId<GetBlockParameters>) => {
+                return this.notion.blocks.retrieve({"block_id":this.block_id, ...args})
+            } ),
+            update : ( () => { return this.notion.blocks.update({"block_id":this.block_id}) } ),
+            delete : ( () => { return this.notion.blocks.delete({"block_id":this.block_id}) } ),
+            children : {
+                append: ( (children: Array<BlockObjectRequest>) => {
+                    return this.notion.blocks.children.append({"block_id":this.block_id, children})
+                } ),
+                list: ( () => { return this.notion.blocks.children.list({"block_id":this.block_id}) } )
+            }
+        },
+        databases: {
+            retrieve : ( () => { return this.notion.databases.retrieve({"database_id":this.block_id}) } ),
+            query : ( (args: WithoutId<QueryDatabaseParameters>) => {
+                return this.notion.databases.query({"database_id":this.block_id, ...args})
+            } )
         }
     }
 
