@@ -73,7 +73,7 @@ export class TableManipulator {
             if (!matched) {throw new Error("URLのパースに失敗しました")}
             this.block_id = matched[matched.length-1]
         }
-        console.log(`Block Id is: "${this.block_id}"`)
+        //console.log(`Block Id : "${this.block_id}"`)
     }
 
     public readonly notion_with_id = {
