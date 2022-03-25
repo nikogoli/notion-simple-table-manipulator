@@ -142,7 +142,7 @@ export class TableManipulator {
 
     public async add_number(
         options: NumberingInfo | null,
-        inspect?: boolean
+        inspect = false
     ): Promise<AppendBlockChildrenResponse> {
         if (options === null ){
             const options: NumberingInfo = { 
@@ -168,6 +168,7 @@ export class TableManipulator {
         //if : (() => {})
     }
 
+    
     public readonly apply_calculation = {
         sum: (() => {}),
     }

@@ -5,7 +5,7 @@ import {
 
 
 // 数式命令
-type FormulaCall = "R_SUM" | "R_AVERAGE" | "R_COUNT" |
+export type FormulaCall = "R_SUM" | "R_AVERAGE" | "R_COUNT" |
                     "R_MAX" | "R_SECONDMAX" | "R_MAXNAME" | "R_SECONDMAXNAME" |
                     "R_MIN" | "R_SECONDMIN" | "R_MINNAME" | "R_SECONDMINNAME" |
                     "C_SUM" | "C_AVERAGE" | "C_COUNT" |
