@@ -177,7 +177,61 @@ export class TableManipulator {
     }
 
 
-    public from_file() {}
+    public async from_file(
+        import_info: ImportInfo,
+        inspect = false
+    ): Promise<AppendBlockChildrenResponse> {
+        const file_name = import_info.path.split("/").reverse()[0]
+        if (!file_name.endsWith(".csv")  && !file_name.endsWith(".json")) {
+            throw new Error("ファイルが正しく指定されていません")
+        }
+    
+        return await Deno.readTextFile(import_info.path).then( async (imported_text) => {
+            let text_mat: Array<Array<string>> = [[""]]
+            if (file_name.endsWith(".csv")) {
+                // csv から、テキストの行列を作成
+                text_mat = imported_text.split(/\r\n|\n/).map(row => row.split(","))
+            
+            } else if (file_name.endsWith(".json")) {
+                // json から、テキストの行列を作成
+                // any を消すため、entries でバラして無理やり string にしてから再度オブジェクト化
+                const j_data: Record<string, unknown> = JSON.parse(imported_text)
+                const j_data_keys = Object.keys(j_data)
+    
+                const row_records = Object.values(j_data).map( (ob, idx) => {
+                    const new_kvs = Object.entries(ob as Record<string, unknown>).map( ([k,v]) => [k, String(v)] )
+                    if (import_info.jsonkey_as_cell) {
+                        return Object.fromEntries([ ["", j_data_keys[idx]], ...new_kvs ]) as Record<string, string>
+                    } else {
+                        return Object.fromEntries(new_kvs) as Record<string, string>
+                    }
+                })
+    
+                // ラベルの一覧を作ってそこから行列を作成
+                const labels = [...new Set(row_records.map(rec => Object.keys(rec)).flat())]
+                const rows = row_records.map(rec => labels.map(lb => (lb in rec) ? rec[lb] : "") )
+                text_mat = [labels].concat(rows)
+            }
+    
+            // テキストの行列から、rich text を作りつつ行データのリストを作成
+            // 今のところ、一律に type="text" で作成
+            const table_rows: Array<TableRowBlockObject> = text_mat.map(row => {
+                const new_cells = row.map( text => set_celldata_obj("text", text) )
+                return {"object":"block", "type":"table_row", "table_row":{"cells": new_cells}}
+            })
+    
+            // 更新した行データから、table block object を作成する
+            const table_props = { "object": 'block', "type": "table", "has_children": true,
+                "table": { "table_width": text_mat[0].length,
+                    "has_column_header": import_info.row_label,
+                    "has_row_header": import_info.col_label,
+                    "children": table_rows
+                }
+            } as BlockObjectRequest
+            
+            return await this.#append_or_inspect([table_props], inspect)
+        })
+    }
 
 
     async #append_or_inspect(
