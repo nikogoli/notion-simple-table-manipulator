@@ -126,3 +126,17 @@ export interface TableRowResponces {
     table_width_list: Array<number>
     rowobjs_lists: Array<Array<TableRowBlockObject>>
 }
+
+// get_tables_and_rows の返り値
+export interface TableResponse {
+    tableinfo_list : Array<TableProps>
+    tablerows_lists : Array<Array<TableRowBlockObject>>
+}
+
+// get_tables_and_rows において取得したテーブルの情報をまとめるもの
+export interface TableProps {
+    id : string
+    has_column_header : boolean
+    has_row_header : boolean
+    table_width: number
+}

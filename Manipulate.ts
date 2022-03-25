@@ -14,6 +14,8 @@ import { BlockObjectRequest,
         GetPageParameters,
         UpdatePageParameters,
         GetPagePropertyParameters,
+        PartialBlockObjectResponse,
+        BlockObjectResponse,
 } from "https://deno.land/x/notion_sdk/src/api-endpoints.ts";
 
 import {
@@ -25,8 +27,9 @@ import {
     NumberingInfo,
     SeparateInfo,
     SortInfo,
+    TableProps,
+    TableResponse,
     TableRowBlockObject,
-    TableRowResponces,
 } from "./base_types.ts"
 
 import {
@@ -223,6 +226,43 @@ export class TableManipulator {
             } as BlockObjectRequest
             
             return await this.#append_or_inspect(response.parent_id, [table_props], inspect)
+    async #get_tables_and_rows( ): Promise<TableResponse> {
+       const tableinfo_list:Array<TableProps> = []
+       const results_list: Array<Array<PartialBlockObjectResponse|BlockObjectResponse>> = []
+
+        return await this.notion_with_id.blocks.children.list({}).then( async (response) => {
+            // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
+            response.results.forEach(item => {
+                if ("type" in item) {
+                    if (item.type=="table") {
+                        const { id } = item
+                        const {has_row_header, has_column_header, table_width} = item.table
+                        tableinfo_list.push( {id, has_row_header, has_column_header, table_width} )
+                    }
+                }
+            })
+            if (!tableinfo_list.length) {throw new Error("子要素にテーブルが見つかりません")}
+        
+            return await tableinfo_list.reduce((promise, table) => {
+                return promise.then(async () => {
+                    await this.props.notion.blocks.children.list({ block_id: table.id }).then(
+                        (response) =>  results_list.push(response.results)
+                    )
+                })
+            }, Promise.resolve() )
+        }).then(  () => {
+            // 行データから必要な情報を取り出す
+            const tablerows_lists: Array<Array<TableRowBlockObject>> = results_list.map(
+                list => list.map(item => {
+                    if ( "type" in item && "table_row" in item ) {
+                        const {type, table_row} = item
+                        return {"object": "block" as const, type, table_row}
+                    } else {
+                        throw new Error("response.results_list 内の行データにおいて、type あるいは table_row がないものが存在します")
+                    }
+                })
+            )
+            return {tableinfo_list, tablerows_lists}
         })
     }
 
