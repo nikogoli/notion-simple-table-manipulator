@@ -232,7 +232,14 @@ export class TableManipulator {
 }
 
 
-    public transpose(){}
+    public async transpose(
+        inspect? : boolean
+    ): Promise<AppendBlockChildrenResponse> {
+        return await this.table_manipulations({
+            calls: [ {"manipulation":"transpose", "options":null} ],
+            inspect
+        })
+    }
 
 
     public calculate(){}
