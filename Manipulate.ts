@@ -203,29 +203,34 @@ export class TableManipulator {
         {   calls,
             inspect }: GenericCall
     ): Promise<AppendBlockChildrenResponse> {
-    
         // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
-        return await get_tables_and_rows(this.props.notion, this.props.url)
+        return await this.#get_tables_and_rows()
         .then(async (response) => {
             // 行データから必要な情報を取り出す
-            const org_rowobjs_list: Array<TableRowBlockObject> = response.rowobjs_lists[0]
+            const org_rowobjs_list: Array<TableRowBlockObject> = response.tablerows_lists[0]
     
             // 比較範囲からラベルを排除するため、デフォルト開始セルをヘッダーの有無に合わせて設定
-            const default_rowidx = (response.header_info_list[0][0]) ? 1 : 0
-            const default_colidx = (response.header_info_list[0][1]) ? 1 : 0
+            const {has_row_header, has_column_header} = response.tableinfo_list[0]
+            const default_rowidx = (has_row_header) ? 1 : 0
+            const default_colidx = (has_column_header) ? 1 : 0
     
             const table_rows = this.#maltiple_manipulation(response, org_rowobjs_list, default_rowidx, default_colidx, calls)
+            const table_width = table_rows[0].table_row.cells.length
     
             // 更新した行データから、table block object を作成する
             const table_props = { "object": 'block', "type": "table", "has_children": true,
-                "table": { "table_width": table_rows[0].table_row.cells.length,
-                    "has_column_header": response.header_info_list[0][0],
-                    "has_row_header": response.header_info_list[0][1],
+                "table": { "table_width": table_width,
+                    "has_column_header": has_column_header,
+                    "has_row_header": has_row_header,
                     "children": table_rows
                 }
             } as BlockObjectRequest
             
-            return await this.#append_or_inspect(response.parent_id, [table_props], inspect)
+            return await this.#append_or_inspect([table_props], inspect)
+        })
+    }
+
+
     async #get_tables_and_rows( ): Promise<TableResponse> {
        const tableinfo_list:Array<TableProps> = []
        const results_list: Array<Array<PartialBlockObjectResponse|BlockObjectResponse>> = []
@@ -268,7 +273,7 @@ export class TableManipulator {
 
 
     #maltiple_manipulation (
-        response: TableRowResponces,
+        response: TableResponse,
         org_table_rows: Array<TableRowBlockObject>,
         default_rowidx: number,
         default_colidx: number,
@@ -286,7 +291,7 @@ export class TableManipulator {
         // 処理
         let table_rows = [...org_table_rows]
         let eval_limit_row = table_rows.length
-        let eval_limit_col = response.table_width_list[0]
+        let eval_limit_col = response.tableinfo_list[0].table_width
         const new_def_rowidx = default_rowidx
         let new_def_colidx = default_colidx
         calls.forEach( call => {
@@ -321,7 +326,7 @@ export class TableManipulator {
             }
             else if (call.manipulation == "transpose") {
                 // テーブル(の行データ)を転置する
-                table_rows = [...Array(response.table_width_list[0])].map( (_x, idx) => {
+                table_rows = [...Array(response.tableinfo_list[0].table_width)].map( (_x, idx) => {
                     const new_cells = table_rows.map( row => row.table_row.cells[idx] )
                     return {"object":"block", "type":"table_row", "table_row":{"cells": new_cells}}
                 } );
