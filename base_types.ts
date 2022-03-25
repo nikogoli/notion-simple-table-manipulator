@@ -92,15 +92,31 @@ export interface NumberingInfo {
 }
 
 
+type SeparateMethod = "by_blank" | "by_number" | "by_labels"
+type SeparateOptions<T> = T extends "by_blank"
+    ? {options: null}
+    : T extends "by_number"
+        ? {options: {number: number}}
+        : {options: {row_labels: Array<string>}}
+
+
 // テーブル分割の設定をまとめたもの
-export type SeparateInfo = {
+export type SeparateInfo =
+    { method : "by_blank", options: null} |
+    { method : "by_number", options: {number: number} } |
+    { method : "by_labels", options: {row_labels: Array<string>} }
+
+/*    
+
+        by_blank : boolean
+        by_number : {}
     factory: {
         use_sort: SortInfo | false,
         count: number    
     } | false
     row_labels: Array<string> | []       // 分割の基準となる行ラベルのリスト 指定行の上で切り分ける
 }
-
+*/
 
 // ソートの設定をまとめるもの(暫定) 現状は、列基準のソートのみを想定
 export interface SortInfo {
