@@ -326,6 +326,23 @@ export class TableManipulator {
     }
 
 
+    async #add_formula(
+        direction: "R" | "C",
+        call : "SUM" | "AVERAGE" | "COUNT" | "MAX" | "SECONDMAX" | "MAXNAME" | "SECONDMAXNAME" | "MIN" | "SECONDMIN" | "MINNAME" | "SECONDMINNAME",
+        options : Omit<CallInfo, "formula">,
+        inspect = false
+    ): Promise<AppendBlockChildrenResponse> {
+        const formula = `${direction}_${call}` as FormulaCall
+        return await this.table_manipulations({
+            calls: [ {
+                        "manipulation":"fomula",
+                        "options": { "formula_list": [ {formula, ...options} ] }
+                    } ],
+            inspect
+        })
+    }
+
+
     public async table_manipulations(
         {   calls,
             inspect }: GenericCall
