@@ -137,6 +137,46 @@ export class TableManipulator {
     }
 
 
+    public add_number(){}
+
+
+    public add_row_from_list() {}
+
+
+    public readonly apply_color = {
+        maxmin : (() => {}),
+        //if : (() => {})
+    }
+
+    public readonly apply_calculation = {
+        sum: (() => {}),
+    }
+
+
+    public join(){}
+
+
+    public separate(){}
+
+
+    public sort(){}
+
+
+    public transpose(){}
+
+
+    public calculate(){}
+
+
+    public readonly convert ={
+        to_list : ( () => {}),
+        from_list : ( () => {})
+    }
+
+
+    public from_file() {}
+
+
     async #append_or_inspect(
         block_is: string,
         data_list: Array<BlockObjectRequest>,
