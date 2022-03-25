@@ -221,7 +221,15 @@ export class TableManipulator {
     }
 
 
-    public sort(){}
+    public async sort(
+        options: SortInfo,
+        inspect = false
+): Promise<AppendBlockChildrenResponse> {
+    return await this.table_manipulations({
+        calls: [ {"manipulation":"sort", "options":options} ],
+        inspect
+    })
+}
 
 
     public transpose(){}
