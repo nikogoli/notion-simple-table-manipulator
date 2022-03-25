@@ -176,7 +176,40 @@ export class TableManipulator {
     public join(){}
 
 
-    public separate(){}
+    public async separate(
+        options: SeparateInfo,
+        inspect?: boolean
+    ): Promise<AppendBlockChildrenResponse> {
+            
+        // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
+        return await this.#get_tables_and_rows()
+        .then(async (response) => {
+            // 行データから必要な情報を取り出す
+            const org_rowobjs_list: Array<TableRowBlockObject> = response.tablerows_lists[0]
+            const default_rowidx = (response.tableinfo_list[0].has_column_header) ? 1 : 0
+
+            // テーブル(の行データ)を複数のリストに分割する
+            const tables = separate_table(org_rowobjs_list, options, default_rowidx)
+
+            // それぞれのリストごとに table block object を作る
+            const table_props_list = tables.map(rows => {
+                return { 
+                    "object": 'block',
+                    "type": 'table',
+                    "table": { // 設定は元のテーブルに合わせる
+                        "table_width": response.tableinfo_list[0].table_width, 
+                        "has_column_header": response.tableinfo_list[0].has_column_header, 
+                        "has_row_header": response.tableinfo_list[0].has_row_header, 
+                        "children": rows
+                    }
+                }
+            }) as Array<BlockObjectRequest>
+
+            return await this.#append_or_inspect(
+                table_props_list, inspect
+            )
+        })
+    }
 
 
     public sort(){}
