@@ -140,8 +140,25 @@ export class TableManipulator {
     }
 
 
-    public add_number(){}
-
+    public async add_number(
+        options: NumberingInfo | null,
+        inspect?: boolean
+    ): Promise<AppendBlockChildrenResponse> {
+        if (options === null ){
+            const options: NumberingInfo = { 
+                "label":"", "text_format":"{num}", "start_number": 1, "step": 1}
+            return await this.table_manipulations({
+                calls: [ {"manipulation":"numbering", "options":options} ],
+                inspect
+            })
+        } else {
+            return await this.table_manipulations({
+                calls: [ {"manipulation":"numbering", "options":options} ],
+                inspect
+            })
+        }
+    }
+    
 
     public add_row_from_list() {}
 
