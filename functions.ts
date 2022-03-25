@@ -643,55 +643,45 @@ export function print_table(
 // table row block のリスト + 処理の設定 → 分割された複数の table row block のリスト
 export function separate_table(
     table_rows: Array<TableRowBlockObject>,
-    option: SeparateInfo,
+    options: SeparateInfo,
     default_rowidx: number
     ): Array<Array<TableRowBlockObject>> {
 
-    let targets: Array<TableRowBlockObject>
-    let use_blank = false
-    let is_cut: (idx:number, len:number, lbs: Array<string>) => boolean
-    if (option.factory) {
-        const {count} = option.factory
-        if (option.factory.use_sort) {
-            targets = sort_tablerows_by_col(option.factory.use_sort, default_rowidx, table_rows)
-        } else {
-            targets = [...table_rows]
-        }
-        is_cut = (idx, _len, _lbs) => {return (idx == count+1)}
-    } else {
-        targets = [...table_rows]
-        use_blank = (option.row_labels.length == 0)
-        if (use_blank) {
-            // 切断の基準：空行、つまり空白セルの数が行の総セル数と等しいかどうか
-            const blank_lengths = table_rows.map(row => row.table_row.cells.filter( cell => cell.length==0).length )
-            is_cut = (idx, len, _lbs) => {return (len == blank_lengths[idx] )}
-        } else if (option.row_labels.length > 0 && option.row_labels[0].length > 0 ) {
-            // 切断の基準：切断の設定で指定したラベルの中に、その行のラベルと一致するものがあるかどうか
-            const labels =  table_rows.map(row => (row.table_row.cells[0].length) ? row.table_row.cells[0].map(t => t.plain_text).join() : "")
-            is_cut = (idx, _len=0, lbs) => {return (lbs.includes(labels[idx]) )}
-        } else {
-            throw new Error("区切りの設定が不適切です")
-        }
+    let is_cut: Array<boolean>
+    if (options.method == "by_number") {
+        // 0始まりのインデックスが number で割り切れたとき、その行の上で分割する
+        const {number} = options.options
+        is_cut = [...Array(table_rows.length).keys()].map(i => (i==0) ? false : i%number==0)
+    } else if (options.method == "by_blank") {
+        // 空白セルの数が行の総セル数と等しいとき、その行の上で分割する
+        const table_width = table_rows[0].table_row.cells.length
+        const blank_cells = table_rows.map(
+            row => row.table_row.cells.filter( cell => cell.length==0).length
+        )
+        is_cut = blank_cells.map(i => i==table_width)
+    } else if (options.method == "by_labels") {
+        // 指定したラベルと一致するラベルであるとき、その行の上で分割する
+        const all_labels =  table_rows.map(
+            r => (r.table_row.cells[0].length) ? r.table_row.cells[0].map(t => t.plain_text).join() : ""
+        )
+        is_cut = all_labels.map( lb => options.options.row_labels.includes(lb) )
     }
     // 元テーブルの行インデックスを複数のリストに分割する
-    const rows_groups = targets.slice(1).reduce( (pre, now, idx) => {
-        let cut = false
-            if  (option.factory) { cut = is_cut(pre[pre.length-1].length, -1, [""]) }
-            else if (use_blank) { cut = is_cut(idx+1, now.table_row.cells.length, [""])}
-            else { cut = is_cut(idx+1, -1, option.row_labels) }
-            // 非カット場所なら行を親リストの末尾のリストに追加、カット場所ならラベル行とその行が入った新しいリストを親の末尾に挿入
-            if (cut) {
-                pre.push( (use_blank) ? [table_rows[0]] : [table_rows[0], now])
+    const rows_groups = table_rows.slice(default_rowidx).reduce( (pre, now, idx) => {
+        // 非カット場所なら行を親リストの末尾のリストに追加、カット場所ならラベル行とその行が入った新しいリストを親の末尾に挿入
+            if (is_cut[idx+default_rowidx] == true) {
+                pre.push( (options.method =="by_blank")
+                    ? (default_rowidx==0) ? [] : [table_rows[0]]
+                    : (default_rowidx==0) ? [now] : [table_rows[0], now]
+                )
                 return pre
             } else {
                 pre[pre.length-1].push(now)
                 return pre
             }
-        }, [[table_rows[0]]] as Array<Array<TableRowBlockObject>>
+        },
+        (default_rowidx!=0) ? [ [table_rows[0]] ] : [[]] as Array<Array<TableRowBlockObject>>
     )
-    if (table_rows.length == 1) {
-        throw new Error('区切りが見つかりません。')
-    }
     return rows_groups
 }
 
