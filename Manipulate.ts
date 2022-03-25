@@ -181,7 +181,6 @@ export class TableManipulator {
 
 
     async #append_or_inspect(
-        block_is: string,
         data_list: Array<BlockObjectRequest>,
         inspect: boolean | undefined
     ): Promise<AppendBlockChildrenResponse> {
@@ -193,7 +192,7 @@ export class TableManipulator {
         
         // 親要素にテーブルを追加
         return await this.props.notion.blocks.children.append({
-            block_id: block_is,
+            block_id: this.props.block_id,
             children: data_list
         })
     }
