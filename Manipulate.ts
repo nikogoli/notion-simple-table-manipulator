@@ -60,72 +60,77 @@ type WithoutId<P> =  Omit<P, "block_id" | "database_id" | "page_id">
 
 
 export class TableManipulator {
-    notion : Client
-    url : string
-    block_id: string
+
+    public readonly props: {"notion":Client, "url":string, "block_id":string} = {
+        notion : new Client(),
+        url : "",
+        block_id: "",
+    }
+
 
     public constructor(info: ApiInformations) {
-        this.notion = info.client
-        this.url = info.url
+        this.props.notion = info.client
+        this.props.url = info.url
         if (!info.url.startsWith("https://")) {
-            this.block_id = info.url
+            this.props.block_id = info.url
         } else {
             const matched = info.url.match(/[\w]{32}/g)
             if (!matched) {throw new Error("URLのパースに失敗しました")}
-            this.block_id = matched[matched.length-1]
+            this.props.block_id = matched[matched.length-1]
         }
-        //console.log(`Block Id : "${this.block_id}"`)
+        //console.log(`Block Id : "${this.props.block_id}"`)
     }
+
 
     public readonly notion_with_id = {
         blocks : {
             retrieve : ( (args: WithoutId<GetBlockParameters>) => {
-                return this.notion.blocks.retrieve({"block_id":this.block_id, ...args})
+                return this.props.notion.blocks.retrieve({"block_id":this.props.block_id, ...args})
             } ),
             update : ( ( args: WithoutId<UpdateBlockParameters> ) => {
-                return this.notion.blocks.update({"block_id":this.block_id, ...args})
+                return this.props.notion.blocks.update({"block_id":this.props.block_id, ...args})
             } ),
             delete : ( ( args: WithoutId<DeleteBlockParameters> ) => { 
-                return this.notion.blocks.delete({"block_id":this.block_id, ...args})
+                return this.props.notion.blocks.delete({"block_id":this.props.block_id, ...args})
             } ),
             children : {
                 append: ( ( args: WithoutId<AppendBlockChildrenParameters>) => {
-                    return this.notion.blocks.children.append({"block_id":this.block_id, ...args})
+                    return this.props.notion.blocks.children.append({"block_id":this.props.block_id, ...args})
                 } ),
                 list: (  (args: WithoutId<ListBlockChildrenParameters>)  => {
-                    return this.notion.blocks.children.list({"block_id":this.block_id, ...args})
+                    return this.props.notion.blocks.children.list({"block_id":this.props.block_id, ...args})
                 } )
             }
         },
         databases: {
             retrieve : ( ( args: WithoutId<GetDatabaseParameters> ) => {
-                return this.notion.databases.retrieve({"database_id":this.block_id, ...args})
+                return this.props.notion.databases.retrieve({"database_id":this.props.block_id, ...args})
             } ),
             query : ( (args: WithoutId<QueryDatabaseParameters>) => {
-                return this.notion.databases.query({"database_id":this.block_id, ...args})
+                return this.props.notion.databases.query({"database_id":this.props.block_id, ...args})
             } ),
             create : ( ( args: Omit<CreateDatabaseParameters, "parent">) => {
-                return this.notion.databases.create({"parent": {"type":"page_id", "page_id":this.block_id}, ...args})
+                return this.props.notion.databases.create({"parent": {"type":"page_id", "page_id":this.props.block_id}, ...args})
             }),
             update : ( ( args: WithoutId<UpdateDatabaseParameters>) => {
-                return this.notion.databases.update({"database_id":this.block_id, ...args})
+                return this.props.notion.databases.update({"database_id":this.props.block_id, ...args})
             } )
         },
         pages: {
             create_in_page: ( ( args: Omit<CreatePageParameters, "parent"> ) => {
-                return this.notion.pages.create(
-                    { "parent": {"page_id":this.block_id, "type":"page_id" }, ...args }
+                return this.props.notion.pages.create(
+                    { "parent": {"page_id":this.props.block_id, "type":"page_id" }, ...args }
                 )
             }),
             retrieve : ( ( args: WithoutId<GetPageParameters> ) => {
-                return this.notion.pages.retrieve( {"page_id":this.block_id, ...args} )
+                return this.props.notion.pages.retrieve( {"page_id":this.props.block_id, ...args} )
             }),
             update : ( ( args: WithoutId<UpdatePageParameters>) => {
-                return this.notion.pages.update({"page_id":this.block_id, ...args})
+                return this.props.notion.pages.update({"page_id":this.props.block_id, ...args})
             }),
             properties : {
                 retrieve : ( ( args: WithoutId<GetPagePropertyParameters>) => {
-                    return this.notion.pages.properties.retrieve({"page_id":this.block_id, ...args})
+                    return this.props.notion.pages.properties.retrieve({"page_id":this.props.block_id, ...args})
                 })
             }
         }
@@ -144,7 +149,7 @@ export class TableManipulator {
         }
         
         // 親要素にテーブルを追加
-        return await this.notion.blocks.children.append({
+        return await this.props.notion.blocks.children.append({
             block_id: block_is,
             children: data_list
         })
@@ -157,7 +162,7 @@ export class TableManipulator {
     ): Promise<AppendBlockChildrenResponse> {
     
         // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
-        return await get_tables_and_rows(this.notion, this.url)
+        return await get_tables_and_rows(this.props.notion, this.props.url)
         .then(async (response) => {
             // 行データから必要な情報を取り出す
             const org_rowobjs_list: Array<TableRowBlockObject> = response.rowobjs_lists[0]
@@ -180,6 +185,7 @@ export class TableManipulator {
             return await this.#append_or_inspect(response.parent_id, [table_props], inspect)
         })
     }
+
 
     #maltiple_manipulation (
         response: TableRowResponces,
