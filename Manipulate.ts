@@ -164,7 +164,15 @@ export class TableManipulator {
 
 
     public readonly apply_color = {
-        maxmin : (() => {}),
+        maxmin : ( async ( 
+                options: ColorInfo,
+                inspect = false
+            ): Promise<AppendBlockChildrenResponse> => {
+                return await this.table_manipulations({
+                    calls: [ {"manipulation":"colored", "options":options} ],
+                    inspect
+                })
+            })
         //if : (() => {})
     }
 
