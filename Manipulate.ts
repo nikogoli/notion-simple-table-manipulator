@@ -281,8 +281,8 @@ export class TableManipulator {
     
             // 比較範囲からラベルを排除するため、デフォルト開始セルをヘッダーの有無に合わせて設定
             const {has_row_header, has_column_header} = response.tableinfo_list[0]
-            const default_rowidx = (has_row_header) ? 1 : 0
-            const default_colidx = (has_column_header) ? 1 : 0
+            const default_rowidx = (has_column_header) ? 1 : 0
+            const default_colidx = (has_row_header) ? 1 : 0
     
             const table_rows = this.#maltiple_manipulation(response, org_rowobjs_list, default_rowidx, default_colidx, calls)
             const table_width = table_rows[0].table_row.cells.length
