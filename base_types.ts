@@ -66,8 +66,8 @@ export interface CellObject {
 export interface ColorInfo {
     direction : "R" | "C"
     excludes? : Array<string> | Array<number>
-    max?: ApiColor | ""
-    min?: ApiColor | ""
+    max?: ApiColor
+    min?: ApiColor
 }
 
 
@@ -87,7 +87,7 @@ export interface ImportInfo {
     path: string
     row_label: boolean
     col_label: boolean
-    jsonkey_as_cell: boolean
+    jsonkey_as_cell?: boolean
 }
 
 
@@ -110,8 +110,8 @@ export type SeparateInfo =
 // ソートの設定をまとめるもの(暫定) 現状は、列基準のソートのみを想定
 export interface SortInfo {
     label: string
-    as_int: boolean
-    reverse: boolean
+    as_int?: boolean
+    high_to_low?: boolean
 }
 
 

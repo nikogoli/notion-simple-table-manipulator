@@ -309,7 +309,7 @@ export function change_text_color (
 
     const valid_idxs = get_valid_indices(table_rows, color_info)
 
-    if (color_info.max!="" || color_info.min!=""){
+    if (color_info.max!==undefined || color_info.min!==undefined){
         arranged_mat.forEach( (targets) => {
             // 評価対象のセルを並び替え、先頭と末尾のテキストを取得し、それと値が等しいセルを取得する (同じ値のセルが複数ある場合に対応)
             if ((color_info.direction=="R" && valid_idxs.includes(targets[0].r_idx) ) ||
@@ -321,10 +321,10 @@ export function change_text_color (
                 const max_cells = targets.filter(item => item.text==max_tx)
 
                 targets.forEach(c => {
-                    if (color_info.max!="" && max_cells.includes(c) && c.cell.length){
+                    if (color_info.max!==undefined && max_cells.includes(c) && c.cell.length){
                         table_rows[c.r_idx].table_row.cells[c.c_idx].forEach(c => c.annotations.color= color_info.max as ApiColor)
                     }
-                    else if (color_info.min!="" && min_cells.includes(c) && c.cell.length){
+                    else if (color_info.min!==undefined && min_cells.includes(c) && c.cell.length){
                         table_rows[c.r_idx].table_row.cells[c.c_idx].forEach(c => c.annotations.color= color_info.min as ApiColor)
                     }
                     else if (c.cell.length){
@@ -639,12 +639,12 @@ export function sort_tablerows_by_col(
     })
 
     let sorted = [...records]
-    if (info.as_int) {
+    if (info.as_int !== undefined && info.as_int == false) {
         sorted = records.sort((a,b) => (a.text < b.text) ? -1 : 1)            
     } else {
         sorted = records.slice(default_rowidx).sort((a,b) => Number(a.text) -Number(b.text))
     }
-    if (info.reverse) {sorted.reverse()}
+    if (info.high_to_low === undefined || info.high_to_low == true) { sorted.reverse() }
 
     // ソートされた行番号の順に行を呼ぶことで、行データを並び替える
     if (default_rowidx==1) {

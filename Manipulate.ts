@@ -520,7 +520,7 @@ export class TableManipulator {
     
                 const row_records = Object.values(j_data).map( (ob, idx) => {
                     const new_kvs = Object.entries(ob as Record<string, unknown>).map( ([k,v]) => [k, String(v)] )
-                    if (import_info.jsonkey_as_cell) {
+                    if (import_info.jsonkey_as_cell!==undefined && import_info.jsonkey_as_cell == true) {
                         return Object.fromEntries([ ["", j_data_keys[idx]], ...new_kvs ]) as Record<string, string>
                     } else {
                         return Object.fromEntries(new_kvs) as Record<string, string>
