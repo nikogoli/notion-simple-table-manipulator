@@ -322,7 +322,50 @@ export class TableManipulator {
     }
 
 
-    public join(){}
+    public async join(
+        joint_options? : {calls: Array<ManipulateSet>},
+        inspect = false  
+    ): Promise<AppendBlockChildrenResponse> {
+    
+        // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
+        return await this.#get_tables_and_rows()
+        .then(async (response) => {
+            // 行データから必要な情報を取り出す
+            const org_rowobjs_lists = response.tablerows_lists
+    
+            // 比較範囲からラベルを排除するため、デフォルト開始セルをヘッダーの有無に合わせて設定
+            const {has_row_header, has_column_header} = response.tableinfo_list[0]
+            const default_rowidx = (has_column_header) ? 1 : 0
+            const default_colidx = (has_row_header) ? 1 : 0
+    
+            // 複数テーブルを接合
+            let table_rows = join_tabels(org_rowobjs_lists, response.tableinfo_list)
+    
+            if (joint_options!==undefined && joint_options.calls.length > 0) {
+                const new_info_list = response.tableinfo_list.map( info => {
+                    const copied = {...info}
+                    copied.table_width = table_rows[0].table_row.cells.length
+                    return copied
+                })
+                const new_response: TableResponse = {
+                    "tablerows_lists": [table_rows],
+                    "tableinfo_list": new_info_list
+                }    
+                table_rows = this.#maltiple_manipulation(new_response, table_rows, default_rowidx, default_colidx, joint_options.calls)
+            }
+    
+            // 更新した行データから、table block object を作成する
+            const table_props = { "object": 'block', "type": "table", "has_children": true,
+                "table": { "table_width": table_rows[0].table_row.cells.length,
+                    "has_column_header": has_column_header,
+                    "has_row_header": has_row_header,
+                    "children": table_rows
+                }
+            } as BlockObjectRequest
+            
+            return await this.#append_or_inspect([table_props], inspect)
+        })
+    }
 
 
     public async separate(
