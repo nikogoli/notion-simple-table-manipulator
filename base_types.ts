@@ -17,41 +17,15 @@ export type BasicFormula = "SUM" | "AVERAGE" | "COUNT" | "MAX" | "SECONDMAX" | "
 
 
 // 操作と設定の組
-export type ManipulateSet = {"func": "add_number", "options": NumberingInfo } |
-                            {"func": "apply_color", "options": ColorInfo} |
-                            {"func": "calculate_table", "options": Array<CallInfo>} |
+export type ManipulateSet = {"func": "add_number", "options": NumberingOptions } |
+                            {"func": "apply_color", "options": ApplyColorOptions} |
+                            {"func": "calculate_table", "options": Array<FormulaOptions>} |
                             {"func": "calculate_cell", "options": null} |
-                            {"func": "sort", "options": SortInfo} |
+                            {"func": "sort", "options": SortOptions} |
                             {"func": "transpose", "options": null}
 
 
-
-
-// リストから追加する際の設定
-export interface AppendFromInfo {
-    cell_separation_by: string
-    label_separation_by?: string
-}                         
-
-
-// ===============  数式関連  =======================
-
-interface BasicCall {
-    append : "newRow" | "newColumn"
-    calls: Array<BasicFormula>
-    formula: FormulaCall
-    label?: string
-    labels?: Array<string>
-    excludes? : Array<string> | Array<number>
-    max?: ApiColor
-    min?: ApiColor
-}
-
-export type CallInfo = Omit<BasicCall, "append"|"calls"|"labels">
-export type SingleCallInfo = Omit<BasicCall, "formula"|"calls"|"labels">
-export type DirectedMultiCallInfo = Omit<BasicCall, "formula"|"label">
-export type NonDirectedMultiCallInfo = Omit<BasicCall, "append"|"formula"|"label">
-
+// ================ 返り値等の utility 系 =====================
 
 // セルの中身・セルの行・列インデックス・セルの plain_text をセットにしたもの
 export interface CellObject {
@@ -62,56 +36,19 @@ export interface CellObject {
 }
 
 
-// テキストの色変更の設定をまとめたもの
-export interface ColorInfo {
-    direction : "R" | "C"
-    excludes? : Array<string> | Array<number>
-    max?: ApiColor
-    min?: ApiColor
+// get_tables_and_rows において取得したテーブルの情報をまとめるもの
+export interface TableProps {
+    id : string
+    has_column_header : boolean
+    has_row_header : boolean
+    table_width: number
 }
 
 
-// リストから変換する際の設定をまとめたもの
-export interface ConvertFromInfo {
-    use_header_row: boolean
-    use_header_col: boolean
-    cell_separation_by: string
-    label_separation_by?: string
-}
-export type ConvertToInfo = Omit<ConvertFromInfo, "use_header_row"|"use_header_col">
-
-
-
-// csv や json からテーブルを作るの設定をまとめたもの
-export interface ImportInfo {
-    path: string
-    row_label: boolean
-    col_label: boolean
-    jsonkey_as_cell?: boolean
-}
-
-
-// 連番の設定をまとめるもの (暫定)
-export interface NumberingInfo {
-    label?: string
-    start_number?: number
-    step?: number
-    text_format?: "{num}" | string
-}
-
-
-// テーブル分割の設定をまとめたもの
-export type SeparateInfo =
-    { method : "by_blank", options: null} |
-    { method : "by_number", options: {number: number} } |
-    { method : "by_labels", options: {row_labels: Array<string>} }
-
-
-// ソートの設定をまとめるもの(暫定) 現状は、列基準のソートのみを想定
-export interface SortInfo {
-    label: string
-    as_int?: boolean
-    high_to_low?: boolean
+// get_tables_and_rows の返り値
+export interface TableResponse {
+    tableinfo_list : Array<TableProps>
+    tablerows_lists : Array<Array<TableRowBlockObject>>
 }
 
 
@@ -123,16 +60,82 @@ export interface TableRowBlockObject {
 }
 
 
-// get_tables_and_rows の返り値
-export interface TableResponse {
-    tableinfo_list : Array<TableProps>
-    tablerows_lists : Array<Array<TableRowBlockObject>>
+// ============ 操作のオプション ================================
+
+// リストから追加する際の設定
+export interface AppendFromOptions {
+    cell_separation_by: string
+    label_separation_by?: string
+}                         
+
+
+// 数式処理関連の設定
+interface BasicCall {
+    append : "newRow" | "newColumn"
+    calls: Array<BasicFormula>
+    formula: FormulaCall
+    label?: string
+    labels?: Array<string>
+    excludes? : Array<string> | Array<number>
+    max?: ApiColor
+    min?: ApiColor
 }
 
-// get_tables_and_rows において取得したテーブルの情報をまとめるもの
-export interface TableProps {
-    id : string
-    has_column_header : boolean
-    has_row_header : boolean
-    table_width: number
+export type FormulaOptions = Omit<BasicCall, "append"|"calls"|"labels">
+export type SingleFormulaOptions = Omit<BasicCall, "formula"|"calls"|"labels">
+export type DirectedMultiFormulaOptions = Omit<BasicCall, "formula"|"label">
+export type NonDirectedMultiFormulaOptions = Omit<BasicCall, "append"|"formula"|"label">
+
+
+
+// テキストの色変更の設定をまとめたもの
+export interface ApplyColorOptions {
+    direction : "R" | "C"
+    excludes? : Array<string> | Array<number>
+    max?: ApiColor
+    min?: ApiColor
+}
+
+
+// リストから変換する際の設定をまとめたもの
+export interface ConvertFromOptions {
+    use_header_row: boolean
+    use_header_col: boolean
+    cell_separation_by: string
+    label_separation_by?: string
+}
+export type ConvertToOptions = Omit<ConvertFromOptions, "use_header_row"|"use_header_col">
+
+
+
+// csv や json からテーブルを作るの設定をまとめたもの
+export interface ImportOptions {
+    path: string
+    row_label: boolean
+    col_label: boolean
+    jsonkey_as_cell?: boolean
+}
+
+
+// 連番の設定をまとめるもの (暫定)
+export interface NumberingOptions {
+    label?: string
+    start_number?: number
+    step?: number
+    text_format?: "{num}" | string
+}
+
+
+// テーブル分割の設定をまとめたもの
+export type SeparateOptions =
+    { method : "by_blank", options: null} |
+    { method : "by_number", options: {number: number} } |
+    { method : "by_labels", options: {row_labels: Array<string>} }
+
+
+// ソートの設定をまとめるもの(暫定) 現状は、列基準のソートのみを想定
+export interface SortOptions {
+    label: string
+    as_int?: boolean
+    high_to_low?: boolean
 }

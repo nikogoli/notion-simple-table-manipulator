@@ -5,22 +5,22 @@ import {
 } from "https://deno.land/x/notion_sdk/src/api-endpoints.ts"
 
 import {
-    CallInfo,
+    ApplyColorOptions,
     CellObject,
-    ColorInfo,
-    ConvertFromInfo,
-    NumberingInfo,
-    SeparateInfo,
-    SortInfo,
-    TableRowBlockObject,
+    ConvertFromOptions,
+    FormulaOptions,
+    NumberingOptions,
+    SeparateOptions,
+    SortOptions,
     TableProps,
+    TableRowBlockObject,
 } from "./base_types.ts"
 
 
 // 行あるいは列として、特定の数式を評価した結果のセルを追加する
 // 数式の設定 + 評価範囲の先頭の行・列のインデックス + 行基準の table block object のリスト → 数式を評価した結果のセルが行・列に追加された table block object
 export function add_formula_to_table(
-    formula_list: Array<CallInfo>,
+    formula_list: Array<FormulaOptions>,
     default_rowidx: number,
     default_colidx: number,
     table_rows: Array<TableRowBlockObject>,
@@ -201,7 +201,7 @@ export function add_formula_to_cell(
 // 各行の先頭に、(指定したフォーマットで)上の行から順に番号を振る
 // 番号付けの設定 + 行基準の table block object のリスト → ラベル行には空セル、それ以外の行には連番セルを先頭に追加した table block object のリスト
 export function add_row_number(
-    number_info: NumberingInfo,
+    number_info: NumberingOptions,
     table_rows: Array<TableRowBlockObject>,
     default_rowidx: number
 )
@@ -261,7 +261,7 @@ function create_cel_matrix(
 // 文字列のリスト + 切り分けの設定 → table row block のリスト
 export function create_from_text(
     texts: Array<string>,
-    options: ConvertFromInfo
+    options: ConvertFromOptions
 ): Array<TableRowBlockObject> {
     let table_rows: Array<TableRowBlockObject>
     if (options.label_separation_by !== undefined){
@@ -295,7 +295,7 @@ export function create_from_text(
 // 最大値・最小値のセルに色付け
 // 色付け設定 + 色付け対象の先頭行・列のインデックス + 行基準の table row block のリスト → セル内のテキストを色付けした table row block のリスト
 export function change_text_color (
-    color_info: ColorInfo,
+    color_info: ApplyColorOptions,
     default_rowidx: number,
     default_colidx: number,
     table_rows: Array<TableRowBlockObject>,
@@ -416,7 +416,7 @@ function evaluate_formula (
 // ラベル判定用の行データのリスト + 範囲指定を含んだオプションオブジェクト → インデックスのリスト
 function get_valid_indices(
     table_rows: Array<TableRowBlockObject>,
-    options: ColorInfo | CallInfo
+    options: ApplyColorOptions | FormulaOptions
 ): Array<number>{
     let valid_idxs = [...Array(table_rows[0].table_row.cells.length).keys()]
     const labels_for_r = table_rows.map(r => (r.table_row.cells[0].length) ? r.table_row.cells[0].map(t => t.plain_text).join() : "" )
@@ -541,7 +541,7 @@ export function print_table(
 // table row block のリスト + 処理の設定 → 分割された複数の table row block のリスト
 export function separate_table(
     table_rows: Array<TableRowBlockObject>,
-    options: SeparateInfo,
+    options: SeparateOptions,
     default_rowidx: number
     ): Array<Array<TableRowBlockObject>> {
 
@@ -614,7 +614,7 @@ export function set_celldata_obj(type:"text"|"equation", text:string) : Array<Ri
 // テーブルの並び替え
 // ソート設定 + 並び替え対象の先頭行のインデックス + 行基準の table row block のリスト → 指定列でソートした table row block のリスト
 export function sort_tablerows_by_col(
-    info: SortInfo,
+    info: SortOptions,
     default_rowidx: number,
     table_rows: Array<TableRowBlockObject>,
     limit_rowidx = table_rows.length

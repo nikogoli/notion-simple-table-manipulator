@@ -1,35 +1,36 @@
 import { Client } from "https://deno.land/x/notion_sdk/src/mod.ts";
-import { BlockObjectRequest,
-        AppendBlockChildrenResponse,
-        QueryDatabaseParameters,
-        UpdateBlockParameters,
+import {
         AppendBlockChildrenParameters,
-        ListBlockChildrenParameters,
-        CreateDatabaseParameters,
-        UpdateDatabaseParameters,
-        CreatePageParameters,
-        UpdatePageParameters,
-        GetPagePropertyParameters,
-        PartialBlockObjectResponse,
+        AppendBlockChildrenResponse,
         BlockObjectResponse,
+        BlockObjectRequest,
+        CreateDatabaseParameters,
+        CreatePageParameters,
+        GetPagePropertyParameters,
+        ListBlockChildrenParameters,
+        UpdateBlockParameters,
+        UpdateDatabaseParameters,
+        UpdatePageParameters,
+        PartialBlockObjectResponse,
+        QueryDatabaseParameters,
 } from "https://deno.land/x/notion_sdk/src/api-endpoints.ts";
 
 import {
-    ManipulateSet,
-    AppendFromInfo,
+    AppendFromOptions,
+    ApplyColorOptions,
     BasicFormula,
-    CallInfo,
-    ColorInfo,
-    ConvertFromInfo,
-    ConvertToInfo,
-    DirectedMultiCallInfo,
+    ConvertFromOptions,
+    ConvertToOptions,
+    DirectedMultiFormulaOptions,
     FormulaCall,
-    ImportInfo,
-    NumberingInfo,
-    NonDirectedMultiCallInfo,
-    SeparateInfo,
-    SingleCallInfo,
-    SortInfo,
+    FormulaOptions,
+    ImportOptions,
+    ManipulateSet,
+    NumberingOptions,
+    NonDirectedMultiFormulaOptions,
+    SeparateOptions,
+    SingleFormulaOptions,
+    SortOptions,
     TableProps,
     TableResponse,
     TableRowBlockObject,
@@ -52,12 +53,6 @@ import {
 export interface ApiInformations {
     client: Client
     url: string
-}
-
-
-export interface GenericCall {
-    calls : Array<ManipulateSet>
-    inspect? : boolean
 }
 
 
@@ -143,7 +138,7 @@ export class TableManipulator {
 
 
     public async add_number(
-        options: NumberingInfo = { "label":"", "text_format":"{num}", "start_number": 1, "step": 1},
+        options: NumberingOptions = { "label":"", "text_format":"{num}", "start_number": 1, "step": 1},
         inspect = false
     ): Promise<AppendBlockChildrenResponse> {
         return await this.multi_processing([ {"func":"add_number", "options":options} ], inspect)
@@ -151,7 +146,7 @@ export class TableManipulator {
 
 
     public async add_row_from_list(
-        options: AppendFromInfo,
+        options: AppendFromOptions,
         inspect = false
     ): Promise<AppendBlockChildrenResponse> {
         return await this.#get_lists().then(async (response) => {
@@ -188,7 +183,7 @@ export class TableManipulator {
 
     public readonly apply_color = {
         maxmin : ( async ( 
-                options: ColorInfo,
+                options: ApplyColorOptions,
                 inspect = false
             ): Promise<AppendBlockChildrenResponse> => {
                 return await this.multi_processing( [ {"func":"apply_color", "options":options} ], inspect)
@@ -199,7 +194,7 @@ export class TableManipulator {
 
     public readonly calculate_table = {
         sum: ( async (
-                formula_call: SingleCallInfo,
+                formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
                 const {append, label, excludes, max, min } = formula_call
@@ -207,7 +202,7 @@ export class TableManipulator {
             }),
 
         average: ( async (
-                formula_call: SingleCallInfo,
+                formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
                 const {append, label, excludes, max, min } = formula_call
@@ -215,7 +210,7 @@ export class TableManipulator {
             }),
 
         count: ( async (
-                formula_call: SingleCallInfo,
+                formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
                 const {append, label, excludes, max, min } = formula_call
@@ -223,7 +218,7 @@ export class TableManipulator {
             }),
         
         max: ( async (
-                formula_call: SingleCallInfo,
+                formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
                 const {append, label, excludes, max, min } = formula_call
@@ -231,7 +226,7 @@ export class TableManipulator {
             }),
 
         second_max: ( async (
-                formula_call: SingleCallInfo,
+                formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
                 const {append, label, excludes, max, min } = formula_call
@@ -239,7 +234,7 @@ export class TableManipulator {
             }),
 
         max_name: ( async (
-                formula_call: SingleCallInfo,
+                formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
                 const {append, label, excludes, max, min } = formula_call
@@ -247,7 +242,7 @@ export class TableManipulator {
             }),
 
         second_max_name: ( async (
-                formula_call: SingleCallInfo,
+                formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
                 const {append, label, excludes, max, min } = formula_call
@@ -255,7 +250,7 @@ export class TableManipulator {
             }),
 
         min: ( async (
-                formula_call: SingleCallInfo,
+                formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
                 const {append, label, excludes, max, min } = formula_call
@@ -263,7 +258,7 @@ export class TableManipulator {
             }),
 
         second_min: ( async (
-                formula_call: SingleCallInfo,
+                formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
                 const {append, label, excludes, max, min } = formula_call
@@ -271,7 +266,7 @@ export class TableManipulator {
             }),
 
         min_name: ( async (
-                formula_call: SingleCallInfo,
+                formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
                 const {append, label, excludes, max, min } = formula_call
@@ -279,7 +274,7 @@ export class TableManipulator {
             }),
 
         second_min_name: ( async (
-                formula_call: SingleCallInfo,
+                formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
                 const {append, label, excludes, max, min } = formula_call
@@ -287,17 +282,17 @@ export class TableManipulator {
             }),
 
         multiple : ( async (
-                formula_calls: Array<DirectedMultiCallInfo>,
+                formula_calls: Array<DirectedMultiFormulaOptions>,
                 inspcet = false
             ) => { return await this.#add_formula_multi(formula_calls, inspcet) }),
         
         multiple_col : ( async (
-                formula_call: NonDirectedMultiCallInfo,
+                formula_call: NonDirectedMultiFormulaOptions,
                 inspcet = false
             ) => { return await this.#add_formula({"append":"newColumn", ...formula_call}, inspcet) }),
         
         multimple_row : ( async (
-            formula_call: NonDirectedMultiCallInfo,
+            formula_call: NonDirectedMultiFormulaOptions,
                 inspcet = false
             ) => { return await this.#add_formula({"append":"newRow", ...formula_call}, inspcet) }),
     }
@@ -382,7 +377,7 @@ export class TableManipulator {
 
 
     public async separate(
-        options: SeparateInfo,
+        options: SeparateOptions,
         inspect?: boolean
     ): Promise<AppendBlockChildrenResponse> {
             
@@ -418,7 +413,7 @@ export class TableManipulator {
 
 
     public async sort(
-        options: SortInfo,
+        options: SortOptions,
         inspect = false
 ): Promise<AppendBlockChildrenResponse> {
     return await this.multi_processing( [ {"func":"sort", "options":options} ], inspect )
@@ -441,7 +436,7 @@ export class TableManipulator {
 
     public readonly convert ={
         to_list : ( async (
-            options: ConvertToInfo,
+            options: ConvertToOptions,
             inspect = false
         ): Promise<AppendBlockChildrenResponse> =>  {
             return await this.#get_tables_and_rows()
@@ -474,7 +469,7 @@ export class TableManipulator {
         }),
 
         from_list : ( async (
-            options: ConvertFromInfo,
+            options: ConvertFromOptions,
             inspect = false
         ): Promise<AppendBlockChildrenResponse> => {
             return await this.#get_lists().then(async (response) => {
@@ -498,7 +493,7 @@ export class TableManipulator {
 
 
     public async from_file(
-        import_info: ImportInfo,
+        import_info: ImportOptions,
         inspect = false
     ): Promise<AppendBlockChildrenResponse> {
         const file_name = import_info.path.split("/").reverse()[0]
@@ -573,7 +568,7 @@ export class TableManipulator {
 
 
     async #add_formula(
-        formula_call : DirectedMultiCallInfo,
+        formula_call : DirectedMultiFormulaOptions,
         inspect = false
     ): Promise<AppendBlockChildrenResponse> {
         const {append, calls, labels, excludes, max, min} = formula_call
@@ -590,7 +585,7 @@ export class TableManipulator {
             append: "newRow" | "newColumn",
             calls: Array<BasicFormula>,
             labels?: Array<string>,
-            options? : Omit<CallInfo, "formula"|"label">,
+            options? : Omit<FormulaOptions, "formula"|"label">,
         }>,
         inspect = false
     ): Promise<AppendBlockChildrenResponse> {
@@ -598,7 +593,7 @@ export class TableManipulator {
             const direction = (fc.append==="newRow") ? "C" :"R"
             const formulas = fc.calls.map( c => `${direction}_${c}` as FormulaCall)
             const lbs = fc.labels ?? fc.calls.map(c => c.replace("SECOND", "2nd").replace("NAME","(name)"))
-            return formulas.map((formula, idx) => {return {formula, "label":lbs[idx], ...fc.options} as CallInfo })
+            return formulas.map((formula, idx) => {return {formula, "label":lbs[idx], ...fc.options} as FormulaOptions })
         }).flat()
         
         return await this.multi_processing( [ { "func":"calculate_table", "options": formula_list } ], inspect )   

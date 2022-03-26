@@ -1,13 +1,13 @@
 export { TableManipulator } from "./Manipulate.ts"
 export type {
-    AppendFromInfo,
+    AppendFromOptions,
+    ApplyColorOptions,
+    ConvertFromOptions,
+    ConvertToOptions,
+    FormulaOptions,
+    ImportOptions,
+    NumberingOptions,
     ManipulateSet,
-    ColorInfo,
-    ConvertFromInfo,
-    ConvertToInfo,
-    CallInfo,
-    ImportInfo,
-    NumberingInfo,
-    SeparateInfo,
-    SortInfo,
+    SeparateOptions,
+    SortOptions,
 } from "./base_types.ts"
