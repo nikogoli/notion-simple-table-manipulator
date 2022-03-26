@@ -34,7 +34,6 @@ export interface AppendFromInfo {
 export interface CallInfo {
     formula: FormulaCall
     label: string
-    targets : "all" | Array<string> | Array<number>
     excludes? : Array<string> | Array<number>
     max?: ApiColor
     min?:ApiColor
@@ -53,7 +52,6 @@ export interface CellObject {
 // テキストの色変更の設定をまとめたもの
 export interface ColorInfo {
     direction : "R" | "C"
-    targets : "all" | Array<string> | Array<number>
     excludes? : Array<string> | Array<number>
     max?: ApiColor | ""
     min?: ApiColor | ""
