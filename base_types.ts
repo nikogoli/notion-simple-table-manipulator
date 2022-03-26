@@ -12,7 +12,10 @@ export type FormulaCall = "R_SUM" | "R_AVERAGE" | "R_COUNT" |
                     "C_MAX" | "C_SECONDMAX" | "C_MAXNAME" | "C_SECONDMAXNAME" |
                     "C_MIN" | "C_SECONDMIN" | "C_MINNAME" | "C_SECONDMINNAME"
 
+export type BasicFormula = "SUM" | "AVERAGE" | "COUNT" | "MAX" | "SECONDMAX" | "MAXNAME" | "SECONDMAXNAME" |
+                    "MIN" | "SECONDMIN" | "MINNAME" | "SECONDMINNAME"
 
+                    
 // 操作と設定の組
 export type ManipulateSet = {"manipulation":"sort", "options": SortInfo} | 
                             {"manipulation":"numbering", "options": NumberingInfo|null} |
@@ -31,13 +34,23 @@ export interface AppendFromInfo {
 }                         
 
 
-export interface CallInfo {
+// ===============  数式関連  =======================
+
+interface BasicCall {
+    append : "newRow" | "newColumn"
+    calls: Array<BasicFormula>
     formula: FormulaCall
     label?: string
+    labels?: Array<string>
     excludes? : Array<string> | Array<number>
     max?: ApiColor
-    min?:ApiColor
+    min?: ApiColor
 }
+
+export type CallInfo = Omit<BasicCall, "append"|"calls"|"labels">
+export type SingleCallInfo = Omit<BasicCall, "formula"|"calls"|"labels">
+export type DirectedMultiCallInfo = Omit<BasicCall, "formula"|"label">
+export type NonDirectedMultiCallInfo = Omit<BasicCall, "append"|"formula"|"label">
 
 
 // セルの中身・セルの行・列インデックス・セルの plain_text をセットにしたもの
