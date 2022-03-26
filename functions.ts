@@ -120,7 +120,7 @@ export function add_formula_to_cell(
     text_matrix.forEach( (row, r_idx) => row.map( (text, c_idx) => {
         // 命令の処理
         if ( text!="" && text.startsWith("=")){       
-            let calucued_text = text
+            let calucued_text = text.slice(1)
             let is_call_only = false
             // 命令文のパース：方向指定文字(C/R)、命令、範囲を示す数字(あるいは空文字列)を取り出す
             const matched = text.match(/([CR])_([^\d\s]+)\((.*)\)/)
@@ -182,8 +182,10 @@ export function add_formula_to_cell(
                     
                 // 四則演算なら eval してその結果を挿入  四則演算と評価できないなら eval せずにfail message を挿入
                 if (!calucued_text.match(/[^\d\+\-\*/\(\)\.]/g)) {
-                    const new_num = eval(calucued_text).toFixed(2)
-                    table_rows[r_idx].table_row.cells[c_idx] = set_celldata_obj("text", String(new_num))
+                    const evaled = eval(calucued_text)
+                    if (typeof evaled != "number") { throw new Error() }
+                    const new_num = (Number.isInteger(evaled)) ? String(evaled) : evaled.toFixed(2)
+                    table_rows[r_idx].table_row.cells[c_idx] = set_celldata_obj("text", new_num)
                     text_matrix[r_idx][c_idx] = new_num
                 } else {
                     table_rows[r_idx].table_row.cells[c_idx] = set_celldata_obj("text", "不適切な数式")
