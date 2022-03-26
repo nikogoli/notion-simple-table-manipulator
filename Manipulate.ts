@@ -538,8 +538,8 @@ export class TableManipulator {
             // 更新した行データから、table block object を作成する
             const table_props = { "object": 'block', "type": "table", "has_children": true,
                 "table": { "table_width": text_mat[0].length,
-                    "has_column_header": import_info.row_label,
-                    "has_row_header": import_info.col_label,
+                    "has_column_header": import_info.set_header_row,
+                    "has_row_header": import_info.set_header_colmun,
                     "children": table_rows
                 }
             } as BlockObjectRequest
