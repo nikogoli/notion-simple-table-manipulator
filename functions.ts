@@ -629,12 +629,12 @@ export function sort_tablerows_by_col(
         throw new Error("テーブル内に、ソート基準に指定した列名が存在しません")
     }
 
-    const records = table_rows.slice(1, limit_rowidx).map( (row, r_idx) => {
+    const records = table_rows.slice(default_rowidx, limit_rowidx).map( (row, r_idx) => {
         const cell = row.table_row.cells[col_idx]
         if (cell.length) {
             return { "text":cell.map(c => c.plain_text).join(), "r_idx": r_idx+1}
         } else {
-            return {"text":"", "r_idx": r_idx+1}
+            return {"text":"", "r_idx": r_idx+default_rowidx}
         }
     })
 
@@ -642,7 +642,7 @@ export function sort_tablerows_by_col(
     if (info.as_int !== undefined && info.as_int == false) {
         sorted = records.sort((a,b) => (a.text < b.text) ? -1 : 1)            
     } else {
-        sorted = records.slice(default_rowidx).sort((a,b) => Number(a.text) -Number(b.text))
+        sorted = records.sort((a,b) => Number(a.text) -Number(b.text))
     }
     if (info.high_to_low === undefined || info.high_to_low == true) { sorted.reverse() }
 
