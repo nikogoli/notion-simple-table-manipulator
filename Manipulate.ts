@@ -339,7 +339,7 @@ export class TableManipulator {
                 }
             } as BlockObjectRequest
             
-            return await this.#append_or_inspect([table_props], inspect)
+            return await this.#append_or_inspect([table_props], response.tableinfo_list.map(l=>l.id), inspect)
         })
     }
 
@@ -371,7 +371,7 @@ export class TableManipulator {
                 }
             } as BlockObjectRequest
             
-            return await this.#append_or_inspect([table_props], inspect)
+            return await this.#append_or_inspect([table_props], response.tableinfo_list.map(l=>l.id), inspect)
         })
     }
 
@@ -405,9 +405,7 @@ export class TableManipulator {
                 }
             }) as Array<BlockObjectRequest>
 
-            return await this.#append_or_inspect(
-                table_props_list, inspect
-            )
+            return await this.#append_or_inspect( table_props_list, response.tableinfo_list.map(l=>l.id), inspect )
         })
     }
 
@@ -464,7 +462,7 @@ export class TableManipulator {
                     }
                 }) as Array<BlockObjectRequest>
                 
-                return await this.#append_or_inspect(list_items, inspect)
+                return await this.#append_or_inspect(list_items, response.tableinfo_list.map(l=>l.id), inspect)
             })
         }),
 
@@ -486,7 +484,7 @@ export class TableManipulator {
                     }
                 } as BlockObjectRequest
                         
-                return await this.#append_or_inspect([table_props], inspect)
+                return await this.#append_or_inspect([table_props], response.texts_ids, inspect)
             })
         })
     }
@@ -544,13 +542,14 @@ export class TableManipulator {
                 }
             } as BlockObjectRequest
             
-            return await this.#append_or_inspect([table_props], inspect)
+            return await this.#append_or_inspect([table_props], null, inspect)
         })
     }
 
 
     async #append_or_inspect(
         data_list: Array<BlockObjectRequest>,
+        id_list: Array<string> | null,
         inspect: boolean | undefined
     ): Promise<AppendBlockChildrenResponse> {
         // inspcet == true のときは、リクエストには投げずにそのデータを返す
@@ -558,12 +557,26 @@ export class TableManipulator {
             print_table(data_list)
             return Promise.resolve({ "results": data_list } as AppendBlockChildrenResponse)
         }
-        
-        // 親要素にテーブルを追加
-        return await this.props.notion.blocks.children.append({
-            block_id: this.props.block_id,
-            children: data_list
-        })
+        if (id_list === null) {
+            // 親要素にテーブルを追加
+            return await this.props.notion.blocks.children.append({
+                block_id: this.props.block_id,
+                children: data_list
+            })
+        } else {
+            return await id_list.reduce((promise, id) => {
+                return promise.then(async () => {
+                    await this.props.notion.blocks.delete({ block_id: id })
+                })
+            }, Promise.resolve() )
+            .then( async () => {
+                // 親要素にテーブルを追加
+                return await this.props.notion.blocks.children.append({
+                    block_id: this.props.block_id,
+                    children: data_list
+                })
+            })
+        }
     }
 
 
