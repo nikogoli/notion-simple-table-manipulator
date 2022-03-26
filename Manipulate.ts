@@ -93,27 +93,27 @@ export class TableManipulator {
 
     public readonly notion_with_id = {
         blocks : {
-            retrieve : ( (args: WithoutId<GetBlockParameters>) => {
-                return this.props.notion.blocks.retrieve({"block_id":this.props.block_id, ...args})
+            retrieve : (() => {
+                return this.props.notion.blocks.retrieve({"block_id":this.props.block_id})
             } ),
             update : ( ( args: WithoutId<UpdateBlockParameters> ) => {
                 return this.props.notion.blocks.update({"block_id":this.props.block_id, ...args})
             } ),
-            delete : ( ( args: WithoutId<DeleteBlockParameters> ) => { 
-                return this.props.notion.blocks.delete({"block_id":this.props.block_id, ...args})
+            delete : ( ( ) => { 
+                return this.props.notion.blocks.delete({"block_id":this.props.block_id})
             } ),
             children : {
                 append: ( ( args: WithoutId<AppendBlockChildrenParameters>) => {
                     return this.props.notion.blocks.children.append({"block_id":this.props.block_id, ...args})
                 } ),
-                list: (  (args: WithoutId<ListBlockChildrenParameters>)  => {
+                list: (  (args?: WithoutId<ListBlockChildrenParameters>)  => {
                     return this.props.notion.blocks.children.list({"block_id":this.props.block_id, ...args})
                 } )
             }
         },
         databases: {
-            retrieve : ( ( args: WithoutId<GetDatabaseParameters> ) => {
-                return this.props.notion.databases.retrieve({"database_id":this.props.block_id, ...args})
+            retrieve : ( ( ) => {
+                return this.props.notion.databases.retrieve({"database_id":this.props.block_id})
             } ),
             query : ( (args: WithoutId<QueryDatabaseParameters>) => {
                 return this.props.notion.databases.query({"database_id":this.props.block_id, ...args})
@@ -131,8 +131,8 @@ export class TableManipulator {
                     { "parent": {"page_id":this.props.block_id, "type":"page_id" }, ...args }
                 )
             }),
-            retrieve : ( ( args: WithoutId<GetPageParameters> ) => {
-                return this.props.notion.pages.retrieve( {"page_id":this.props.block_id, ...args} )
+            retrieve : ( ( ) => {
+                return this.props.notion.pages.retrieve( {"page_id":this.props.block_id} )
             }),
             update : ( ( args: WithoutId<UpdatePageParameters>) => {
                 return this.props.notion.pages.update({"page_id":this.props.block_id, ...args})
@@ -512,7 +512,7 @@ export class TableManipulator {
        const tableinfo_list:Array<TableProps> = []
        const results_list: Array<Array<PartialBlockObjectResponse|BlockObjectResponse>> = []
 
-        return await this.notion_with_id.blocks.children.list({}).then( async (response) => {
+        return await this.notion_with_id.blocks.children.list().then( async (response) => {
             // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
             response.results.forEach(item => {
                 if ("type" in item) {
