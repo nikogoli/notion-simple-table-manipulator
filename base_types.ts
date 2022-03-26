@@ -29,8 +29,8 @@ export type ManipulateSet = {"manipulation":"sort", "options": SortInfo} |
 
 // リストから追加する際の設定
 export interface AppendFromInfo {
-    separation: string
-    label_separation: false | string
+    cell_separation_by: string
+    label_separation_by?: string
 }                         
 
 
@@ -72,11 +72,13 @@ export interface ColorInfo {
 
 
 // リストから変換する際の設定をまとめたもの
-export interface ConvertInfo {
-    row_label: boolean
-    col_label: false | string
-    separation: string
+export interface ConvertFromInfo {
+    use_header_row: boolean
+    use_header_col: boolean
+    cell_separation_by: string
+    label_separation_by?: string
 }
+export type ConvertToInfo = Omit<ConvertFromInfo, "use_header_row"|"use_header_col">
 
 
 // 一様な数式行・列の追加の設定をまとまるもの (暫定)

@@ -12,7 +12,7 @@ import {
     CallInfo,
     CellObject,
     ColorInfo,
-    ConvertInfo,
+    ConvertFromInfo,
     FormulaInfo,
     NumberingInfo,
     SeparateInfo,
@@ -259,14 +259,14 @@ function create_cel_matrix(
 // 文字列のリスト + 切り分けの設定 → table row block のリスト
 export function create_from_text(
     texts: Array<string>,
-    options: ConvertInfo
+    options: ConvertFromInfo
 ): Array<TableRowBlockObject> {
     let table_rows: Array<TableRowBlockObject>
-    if (options.col_label !== false){
+    if (options.label_separation_by !== undefined){
         // ラベル+セルのテキストの場合、セルごとに切り分けてレコードを作る
-        const sep = options.col_label
+        const sep = options.label_separation_by
         const row_records: Array<Record<string, string>> = texts.map( tx =>{
-            return Object.fromEntries( tx.split(options.separation).map( t => t.split(sep) ) )
+            return Object.fromEntries( tx.split(options.cell_separation_by).map( t => t.split(sep) ) )
         })
 
         // ラベル行とセル行をそれぞれ作り、table row block としてまとめる
@@ -281,7 +281,7 @@ export function create_from_text(
         })
     } else {
         // セルのテキストのみの場合、そのままセルを作り、そのまま table row block を作る
-        const row_cells_list = texts.map(tx => tx.split(options.separation).map(t => set_celldata_obj("text", t)) )
+        const row_cells_list = texts.map(tx => tx.split(options.cell_separation_by).map(t => set_celldata_obj("text", t)) )
         table_rows = row_cells_list.map(cells => {
             return {"object":"block", "type":"table_row", "table_row":{"cells":cells}}
         })
