@@ -365,8 +365,8 @@ export class TableManipulator {
             // 更新した行データから、table block object を作成する
             const table_props = { "object": 'block', "type": "table", "has_children": true,
                 "table": { "table_width": table_width,
-                    "has_column_header": (new_def_rowidx==1),
-                    "has_row_header": (new_def_colidx==1),
+                    "has_column_header": (new_def_rowidx>0),
+                    "has_row_header": (new_def_colidx>0),
                     "children": table_rows
                 }
             } as BlockObjectRequest
