@@ -20,7 +20,7 @@ export type BasicFormula = "SUM" | "AVERAGE" | "COUNT" | "MAX" | "SECONDMAX" | "
 export type ManipulateSet = {"manipulation":"sort", "options": SortInfo} | 
                             {"manipulation":"numbering", "options": NumberingInfo|null} |
                             {"manipulation":"colored", "options": ColorInfo} |
-                            {"manipulation":"fomula", "options": FormulaInfo} |
+                            {"manipulation":"fomula", "options": Array<CallInfo>} |
                             {"manipulation":"transpose", "options": null} |
                             {"manipulation":"calculate", "options": null}
                             // | {"manipulation":"separate", "options": SeparateInfo}
@@ -81,11 +81,6 @@ export interface ConvertFromInfo {
 export type ConvertToInfo = Omit<ConvertFromInfo, "use_header_row"|"use_header_col">
 
 
-// 一様な数式行・列の追加の設定をまとまるもの (暫定)
-export interface FormulaInfo {
-    formula_list: Array<CallInfo>
-}
-
 
 // csv や json からテーブルを作るの設定をまとめたもの
 export interface ImportInfo {
@@ -105,31 +100,12 @@ export interface NumberingInfo {
 }
 
 
-type SeparateMethod = "by_blank" | "by_number" | "by_labels"
-type SeparateOptions<T> = T extends "by_blank"
-    ? {options: null}
-    : T extends "by_number"
-        ? {options: {number: number}}
-        : {options: {row_labels: Array<string>}}
-
-
 // テーブル分割の設定をまとめたもの
 export type SeparateInfo =
     { method : "by_blank", options: null} |
     { method : "by_number", options: {number: number} } |
     { method : "by_labels", options: {row_labels: Array<string>} }
 
-/*    
-
-        by_blank : boolean
-        by_number : {}
-    factory: {
-        use_sort: SortInfo | false,
-        count: number    
-    } | false
-    row_labels: Array<string> | []       // 分割の基準となる行ラベルのリスト 指定行の上で切り分ける
-}
-*/
 
 // ソートの設定をまとめるもの(暫定) 現状は、列基準のソートのみを想定
 export interface SortInfo {
@@ -146,15 +122,6 @@ export interface TableRowBlockObject {
     type: "table_row"
 }
 
-
-// get_tables_and_rows の返り値で、親要素に含まれるテーブルとそれらの行データに関する諸々を格納するもの
-export interface TableRowResponces {
-    parent_id: string
-    table_id_list: Array<string>
-    header_info_list: Array<Array<boolean>>
-    table_width_list: Array<number>
-    rowobjs_lists: Array<Array<TableRowBlockObject>>
-}
 
 // get_tables_and_rows の返り値
 export interface TableResponse {

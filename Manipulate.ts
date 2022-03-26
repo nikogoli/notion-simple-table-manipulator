@@ -1,17 +1,13 @@
 import { Client } from "https://deno.land/x/notion_sdk/src/mod.ts";
 import { BlockObjectRequest,
         AppendBlockChildrenResponse,
-        GetBlockParameters,
         QueryDatabaseParameters,
         UpdateBlockParameters,
-        DeleteBlockParameters,
         AppendBlockChildrenParameters,
         ListBlockChildrenParameters,
-        GetDatabaseParameters,
         CreateDatabaseParameters,
         UpdateDatabaseParameters,
         CreatePageParameters,
-        GetPageParameters,
         UpdatePageParameters,
         GetPagePropertyParameters,
         PartialBlockObjectResponse,
@@ -28,7 +24,6 @@ import {
     ConvertToInfo,
     DirectedMultiCallInfo,
     FormulaCall,
-    FormulaInfo,
     ImportInfo,
     NumberingInfo,
     NonDirectedMultiCallInfo,
@@ -46,8 +41,6 @@ import {
     add_row_number,
     change_text_color,
     create_from_text,
-    get_lists,
-    get_tables_and_rows,
     join_tabels,
     print_table,
     separate_table,
@@ -579,12 +572,11 @@ export class TableManipulator {
         const direction = (append==="newRow") ? "C" : "R"
         const formulas = calls.map( c => `${direction}_${c}` as FormulaCall)
         const lbs = labels ?? calls.map( c => String(c).replace("SECOND", "2nd ").replace("NAME", "(name)") )
+        const calllist = formulas.map( (formula, idx) => {return {formula, "label":lbs[idx], excludes, max, min} })
         return await this.table_manipulations({
             calls: [ {
                         "manipulation":"fomula",
-                        "options": {
-                            "formula_list": formulas.map( (formula, idx) => {return {formula, "label":lbs[idx], excludes, max, min} })
-                        }
+                        "options": calllist
                     } ],
             inspect
         })
@@ -608,7 +600,7 @@ export class TableManipulator {
         }).flat()
         
         return await this.table_manipulations({
-            calls: [ { "manipulation":"fomula", "options": { formula_list } } ],
+            calls: [ { "manipulation":"fomula", "options": formula_list } ],
             inspect
         })   
     }
@@ -741,7 +733,7 @@ export class TableManipulator {
             }
             else if (call.manipulation == "fomula") {
                 // 各行・列に対して一様に数式評価を行う行・列を追加する
-                call.options.formula_list.forEach(info => {
+                call.options.forEach(info => {
                     if (( ["R_MAXNAME","R_MINNAME","R_SECONDMAXNAME","R_SECONDMINNAME"].includes(info.formula) && new_def_rowidx==0) ||
                         ( ["C_MAXNAME","C_MINNAME","C_SECONDMAXNAME","C_SECONDMINNAME"].includes(info.formula) && new_def_colidx==0)) {
                             throw new Error("対応するラベル行・列がない場合、NAME系の formula は使用できません")

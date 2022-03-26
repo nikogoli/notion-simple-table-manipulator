@@ -1,10 +1,6 @@
-import { Client } from "https://deno.land/x/notion_sdk/src/mod.ts";
-
 import { 
     ApiColor,
-    BlockObjectResponse,
     BlockObjectRequest,
-    PartialBlockObjectResponse,
     RichTextItemResponse,
 } from "https://deno.land/x/notion_sdk/src/api-endpoints.ts"
 
@@ -13,13 +9,10 @@ import {
     CellObject,
     ColorInfo,
     ConvertFromInfo,
-    FormulaInfo,
     NumberingInfo,
     SeparateInfo,
     SortInfo,
     TableRowBlockObject,
-    TableRowResponces,
-    TableResponse,
     TableProps,
 } from "./base_types.ts"
 
@@ -27,7 +20,7 @@ import {
 // 行あるいは列として、特定の数式を評価した結果のセルを追加する
 // 数式の設定 + 評価範囲の先頭の行・列のインデックス + 行基準の table block object のリスト → 数式を評価した結果のセルが行・列に追加された table block object
 export function add_formula_to_table(
-    info: FormulaInfo,
+    formula_list: Array<CallInfo>,
     default_rowidx: number,
     default_colidx: number,
     table_rows: Array<TableRowBlockObject>,
@@ -45,7 +38,7 @@ export function add_formula_to_table(
         "col": table_rows.map(row => row.table_row.cells[0])
     }
 
-    info.formula_list.forEach(info => {
+    formula_list.forEach(info => {
         const [direction, formula] = info.formula.split("_")
         const label = info.label ?? formula
         const valid_idxs = get_valid_indices(table_rows, info)
@@ -409,98 +402,6 @@ function evaluate_formula (
     } else {
         throw new Error("formula が不適切です")
     }
-}
-
-
-// 親要素を指定し、そこに含まれるリストのデータを取得する
-// 親要素を含んだURL → 親要素のid、子要素であるリスト要素のidのリスト・リスト要素のテキストのリスト
-export async function get_lists(
-    notion:Client,
-    url:string
-): Promise<{"texts_ids":Array<string>, "texts":Array<string>, "parent_id":string, "table_id":string}> {
-    let parent_id: string
-    if (!url.startsWith("https://")) {
-        parent_id = url
-    } else {
-        const matched = url.match(/so\/(.+)#(.+)/)
-        if (!matched) {throw new Error("URLのパースに失敗しました")}
-        parent_id = matched[2]
-    }
-    return await notion.blocks.children.list({ block_id: parent_id }).then( (response) => {
-        // 親要素以下の リスト要素を取得する
-        const texts: Array<string> = []
-        const texts_ids: Array<string> = []
-        let table_id =""
-        response.results.forEach(item => {
-            if ("type" in item) {
-                if (item.type=="bulleted_list_item") {
-                    texts_ids.push(item.id)
-                    texts.push(item.bulleted_list_item.rich_text.map(t => t.plain_text).join())
-                } else if (item.type=="numbered_list_item" ){
-                    texts_ids.push(item.id)
-                    texts.push(item.numbered_list_item.rich_text.map(t => t.plain_text).join())
-                } else if (item.type=="table" ) {
-                    table_id = item.id
-                }
-            }
-        })
-        if (!texts_ids.length) {throw new Error("子要素にリストブロックが見つかりません")}
-        return {texts_ids, texts, parent_id, table_id}
-    })
-}
-
-
-// 親要素を指定し、そこに含まれるテーブルに関する情報を取得する
-// 親要素を含んだURL → 親要素のid、子要素であるテーブルのid・ヘッダー情報・テーブル幅・行データそれぞれのリスト
-export async function get_tables_and_rows(notion:Client, url:string): Promise<TableRowResponces> {
-    const table_id_list: Array<string> = []
-    const header_info_list: Array<Array<boolean>> = []
-    const table_width_list: Array<number> = []
-    const results_list: Array<Array<PartialBlockObjectResponse|BlockObjectResponse>> = []
-    let parent_id = ""
-
-    if (!url.startsWith("https://")) {
-        parent_id = url
-    } else {
-        const matched = url.match(/so\/(.+)#(.+)/)
-        if (!matched) {throw new Error("URLのパースに失敗しました")}
-        parent_id = matched[2]
-    }
-
-    return await notion.blocks.children.list({ block_id: parent_id }).then( async (response) => {
-        // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
-        response.results.forEach(item => {
-            if ("type" in item) {
-                if (item.type=="table") {
-                    table_id_list.push(item.id)
-                    header_info_list.push([item.table.has_column_header, item.table.has_row_header])
-                    table_width_list.push(item.table.table_width)
-                }
-            }
-        })
-        if (!table_id_list.length) {throw new Error("子要素にテーブルが見つかりません")}
-    
-        return await table_id_list.reduce((promise, id) => {
-            return promise.then(async () => {
-                await notion.blocks.children.list({ block_id:id }).then(
-                    (response) =>  results_list.push(response.results)
-                )
-            })
-        }, Promise.resolve() )
-    }).then(  () => {
-        // 行データから必要な情報を取り出す
-        const rowobjs_lists: Array<Array<TableRowBlockObject>> = results_list.map(
-            list => list.map(item => {
-                if ( "type" in item && "table_row" in item ) {
-                    const {type, table_row} = item
-                    return {"object": "block" as const, type, table_row}
-                } else {
-                    throw new Error("response.results_list 内の行データにおいて、type あるいは table_row がないものが存在します")
-                }
-            })
-        )
-        return {parent_id, table_id_list, header_info_list, table_width_list, rowobjs_lists}
-    })
 }
 
 
