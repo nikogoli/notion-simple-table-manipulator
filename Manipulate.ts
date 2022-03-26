@@ -24,7 +24,8 @@ import {
     BasicFormula,
     CallInfo,
     ColorInfo,
-    ConvertInfo,
+    ConvertFromInfo,
+    ConvertToInfo,
     DirectedMultiCallInfo,
     FormulaCall,
     FormulaInfo,
@@ -173,18 +174,19 @@ export class TableManipulator {
     ): Promise<AppendBlockChildrenResponse> {
         return await this.#get_lists().then(async (response) => {
             const {texts, table_id} = response
-            
+            const {cell_separation_by, label_separation_by} = options
+
             // 文字列のリストからテーブル形式へ
-            const table_rows = create_from_text(texts, 
-                {"separation":options.separation, "row_label":false, "col_label":options.label_separation}
+            const table_rows = create_from_text(texts,
+                {cell_separation_by, label_separation_by, "use_header_row":true, "use_header_col":(label_separation_by===undefined)}
             )
-            const additional_rows = (options.label_separation===false) ? table_rows : table_rows.slice(1)
+            const additional_rows = (label_separation_by===undefined) ? table_rows : table_rows.slice(1)
 
             // inspcet == true のときは、リクエストには投げずにそのデータを返す
             if (inspect) {
                 const pasedu_table = { "object": 'block', "type": "table", "has_children": true,
                     "table": { "table_width": additional_rows[0].table_row.cells.length,
-                        "has_column_header": (options.label_separation!==false) ? true : false,
+                        "has_column_header": (label_separation_by===undefined),
                         "has_row_header": false,
                         "children": additional_rows
                     }
@@ -429,8 +431,60 @@ export class TableManipulator {
 
 
     public readonly convert ={
-        to_list : ( () => {}),
-        from_list : ( () => {})
+        to_list : ( async (
+            options: ConvertToInfo,
+            inspect = false
+        ): Promise<AppendBlockChildrenResponse> =>  {
+            return await this.#get_tables_and_rows()
+            .then(async (response) => {
+                // 行データから必要な情報を取り出す
+                const org_rowobjs_list: Array<TableRowBlockObject> = response.tablerows_lists[0]
+
+                // セルのテキストの行列を作成
+                const text_mat = org_rowobjs_list.map(
+                    row => row.table_row.cells.map(cell => (cell.length) ? cell.map(c => c.plain_text).join() : "" )
+                )
+                let formatted_text: Array<Array<string>>
+                if (options.label_separation_by) {
+                    const sep = options.label_separation_by
+                    const labels = text_mat[0]
+                    formatted_text = text_mat.slice(1).map(row => row.map( (t,idx) => labels[idx]+sep+t) )
+                } else {
+                    formatted_text = text_mat
+                }
+
+                const list_items = formatted_text.map(row => row.join(options.cell_separation_by)).map(tx => {
+                    return {
+                        "object":"block", "type": "bulleted_list_item",
+                        "bulleted_list_item":{"rich_text": set_celldata_obj("text", tx)}
+                    }
+                }) as Array<BlockObjectRequest>
+                
+                return await this.#append_or_inspect(list_items, inspect)
+            })
+        }),
+
+        from_list : ( async (
+            options: ConvertFromInfo,
+            inspect = false
+        ): Promise<AppendBlockChildrenResponse> => {
+            return await this.#get_lists().then(async (response) => {
+                const {texts} = response
+        
+                // 文字列のリストからテーブル形式へ
+                const table_rows = create_from_text(texts, options)
+        
+                const table_props = { "object": 'block', "type": "table", "has_children": true,
+                    "table": { "table_width": table_rows[0].table_row.cells.length,
+                        "has_column_header": options.use_header_row ,
+                        "has_row_header": options.use_header_col,
+                        "children": table_rows
+                    }
+                } as BlockObjectRequest
+                        
+                return await this.#append_or_inspect([table_props], inspect)
+            })
+        })
     }
 
 
