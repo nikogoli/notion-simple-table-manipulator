@@ -260,9 +260,9 @@ export function create_from_text(
     options: ConvertInfo
 ): Array<TableRowBlockObject> {
     let table_rows: Array<TableRowBlockObject>
-    if (options.col_label){
+    if (options.col_label !== false){
         // ラベル+セルのテキストの場合、セルごとに切り分けてレコードを作る
-        const sep = options.col_label.sep
+        const sep = options.col_label
         const row_records: Array<Record<string, string>> = texts.map( tx =>{
             return Object.fromEntries( tx.split(options.separation).map( t => t.split(sep) ) )
         })

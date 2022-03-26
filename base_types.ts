@@ -15,7 +15,7 @@ export type FormulaCall = "R_SUM" | "R_AVERAGE" | "R_COUNT" |
 export type BasicFormula = "SUM" | "AVERAGE" | "COUNT" | "MAX" | "SECONDMAX" | "MAXNAME" | "SECONDMAXNAME" |
                     "MIN" | "SECONDMIN" | "MINNAME" | "SECONDMINNAME"
 
-                    
+
 // 操作と設定の組
 export type ManipulateSet = {"manipulation":"sort", "options": SortInfo} | 
                             {"manipulation":"numbering", "options": NumberingInfo|null} |
@@ -29,8 +29,8 @@ export type ManipulateSet = {"manipulation":"sort", "options": SortInfo} |
 
 // リストから追加する際の設定
 export interface AppendFromInfo {
-    col_label: {sep: string} | false
     separation: string
+    label_separation: false | string
 }                         
 
 
@@ -74,7 +74,7 @@ export interface ColorInfo {
 // リストから変換する際の設定をまとめたもの
 export interface ConvertInfo {
     row_label: boolean
-    col_label: {sep: string} | false
+    col_label: false | string
     separation: string
 }
 
