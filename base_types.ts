@@ -33,7 +33,7 @@ export interface AppendFromInfo {
 
 export interface CallInfo {
     formula: FormulaCall
-    label: string
+    label?: string
     excludes? : Array<string> | Array<number>
     max?: ApiColor
     min?:ApiColor

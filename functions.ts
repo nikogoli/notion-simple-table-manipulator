@@ -45,6 +45,7 @@ export function add_formula_to_table(
 
     info.formula_list.forEach(info => {
         const [direction, formula] = info.formula.split("_")
+        const label = info.label ?? formula
         const valid_idxs = get_valid_indices(table_rows, info)
 
         let results_texts : Array< RichTextItemResponse[]> = []
@@ -56,7 +57,7 @@ export function add_formula_to_table(
                     results_texts.push(new_text_obj)
                 }
             })
-            if (default_rowidx==1) {table_rows[0].table_row.cells.push(set_celldata_obj("text", info.label))}
+            if (default_rowidx==1) {table_rows[0].table_row.cells.push(set_celldata_obj("text", label))}
         } else if (direction=="C") {
             let new_cells = cell_mat_by_col.map( target => {
                 return (valid_idxs.includes(target[0].c_idx) )
@@ -67,9 +68,9 @@ export function add_formula_to_table(
             if (default_colidx > 0) {
                 if (default_colidx > 1) {
                     const blank_cells = [...Array(default_colidx-1)].map(_x => set_celldata_obj("text",""))
-                    new_cells = [set_celldata_obj("text", info.label), ...blank_cells, ...new_cells] 
+                    new_cells = [set_celldata_obj("text", label), ...blank_cells, ...new_cells] 
                 } else {
-                    new_cells = [set_celldata_obj("text", info.label), ...new_cells] 
+                    new_cells = [set_celldata_obj("text", label), ...new_cells] 
                 }
             }
             table_rows.push( {"object":"block", "type":"table_row", "table_row": {"cells":new_cells}} )
