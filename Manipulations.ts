@@ -7,7 +7,6 @@ import {
     AppendFromInfo,
     ColorInfo,
     ConvertInfo,
-    FormulaInfo,
     ImportInfo,
     NumberingInfo,
     SeparateInfo,
