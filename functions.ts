@@ -19,6 +19,8 @@ import {
     SortInfo,
     TableRowBlockObject,
     TableRowResponces,
+    TableResponse,
+    TableProps,
 } from "./base_types.ts"
 
 
@@ -541,25 +543,24 @@ function get_valid_indices(
 //      ラベル行があるものと無いものが混合しているとき、ラベル行がないテーブルはその1つ上に位置するテーブルに合わせて結合される
 //      テーブル間に異なるラベル列がある場合も許容し、各行で元のテーブルにない部分は空セルで埋める
 export function join_tabels(
-    table_rows_lists: Array<Array<TableRowBlockObject>>,
-    header_info_list: Array<Array<boolean>>,
-    table_width_list: Array<number>
+    tablerows_lists: Array<Array<TableRowBlockObject>>,
+    tableinfo_list: Array<TableProps>
 ) :Array<TableRowBlockObject> {
 
     let new_rows: Array<Array<Array<RichTextItemResponse>|[]>>
-    if (! header_info_list.map( rowcol => rowcol[0] ).includes(true)) {
-        new_rows = table_rows_lists.map(lis => lis.map(row => row.table_row.cells)).flat()
-    } else if (header_info_list.map( rowcol => rowcol[0] ).includes(true) && header_info_list[0][0]==false) {
+    if (! tableinfo_list.map( info => info.has_column_header ).includes(true)) {
+        new_rows = tablerows_lists.map(lis => lis.map(row => row.table_row.cells)).flat()
+    } else if (tableinfo_list.map( info => info.has_column_header ).includes(true) && tableinfo_list[0].has_column_header==false) {
         throw new Error("ラベル行を持つ行列が少なくとも1つある場合、一番上に位置する行列はラベル行を持つものにしてください")
     } else {
         type CellRecord = Record<string, Array<RichTextItemResponse>|[]>
         const label_record_list: Array<CellRecord> = []
         const row_records_list: Array<Array<CellRecord>> = []
-        table_rows_lists.forEach( (table_rows, idx) => {
-            const header_info = header_info_list[idx]
+        tablerows_lists.forEach( (table_rows, idx) => {
+            const {has_column_header} = tableinfo_list[idx]
             let label_rec: CellRecord
             let rows = table_rows
-            if (header_info[0]==true) {
+            if (has_column_header) {
                 label_rec = Object.fromEntries(table_rows[0].table_row.cells.map( 
                     c => (c.length) ? [c.map(t => t.plain_text).join(), c] : ["", c]
                 ))
@@ -578,7 +579,7 @@ export function join_tabels(
         const unique_labels = [...new Set( label_record_list.map(rec => [...Object.keys(rec)]).flat() )]
         let header_row : Array<[] | Array<RichTextItemResponse>>
         let body_rows : Array<Array<Array<RichTextItemResponse>>>
-        if (unique_labels.length == table_width_list[0]) {
+        if (unique_labels.length == tableinfo_list[0].table_width) {
             header_row = unique_labels.map( lb => label_record_list[0][lb])
             body_rows = row_records_list.flat().map(rec => unique_labels.map(lb => rec[lb]))
         } else {
