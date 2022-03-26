@@ -10,7 +10,6 @@
  - [**テーブルの分割**](https://github.com/nikogoli/notion-simple-table-manipulator#%E3%83%86%E3%83%BC%E3%83%96%E3%83%AB%E3%82%92%E5%88%86%E5%89%B2)：指定した場所で、あるいは指定した行数ごとにテーブルを分割する
  - [**外部ファイルから作成**](https://github.com/nikogoli/notion-simple-table-manipulator#csv-%E3%81%8A%E3%82%88%E3%81%B3-json-%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E3%81%8B%E3%82%89%E3%83%86%E3%83%BC%E3%83%96%E3%83%AB%E3%82%92%E4%BD%9C%E6%88%90)：csv および json ファイルからテーブルを作成
  
- 1 ~ 5 のそれぞれの処理は、[**任意のものを任意の順番で組み合わせて行う**](https://github.com/nikogoli/notion-simple-table-manipulator#%E4%BB%BB%E6%84%8F%E3%81%AE%E6%93%8D%E4%BD%9C%E3%82%92%E4%BB%BB%E6%84%8F%E3%81%AE%E9%A0%86%E7%95%AA%E3%81%A7)ことも可能 (ただし転置のみは、連続した操作の最初あるいは最後に順番を限定)
  
  
 ### 注意点
@@ -21,15 +20,11 @@
 
 
 
-
-## 使用例
+## 使用方法
 ### 基本形
 ```typescript
 import { Client } from "https://deno.land/x/notion_sdk/src/mod.ts"
-import { 
-    HogehogeInfo,    // オプションの設定 無いこともある
-    table_hogehoge   // 操作関数
-} from "https://pax.deno.dev/nikogoli/notion-simple-table-manipulator/mod.ts"
+import { TableManipulator } from "https://pax.deno.dev/nikogoli/notion-simple-table-manipulator/mod.ts"
 
 
 const notion = new Client({auth: "~~~~"})
@@ -37,18 +32,28 @@ const target_url = "---親要素のid---"
 // const target_url = "https://www.notion.so/---ページのid---#---親要素のid---"  // notion 上で取得したブロックのリンクでもOK
 
 
-// 操作の追加設定：
-const info: HogehogeInfo = {"label":"HOGE"}
+const simple_table = new TableManipulator({"client":notion, "url":target_url})
+
+// 例：指定した列の値を基準に、テーブルの行を並べ替える
+await simple_table.sort({"label":"こうげき", "as_int":true, "reverse":true}).then(response => console.log(response))
 
 
-// 「元のテーブルの情報を取得 + テーブルを操作 + 新規テーブルとして親要素の下に追加」をまとめて行う
-await table_hogehoge(notion, target_url, info).then(response => console.log(response))
-
-// 操作関数の最後の引数を true にすると、操作後のテーブルのデータの append は行わず response.results に入れて返す (確認・追加操作用)
-// await table_hogehoge(notion, target_url, info, true).then(response => console.log(response))
+// 2つ目の引数として true を与えると、データは append されず response.results に入って返される (確認・追加操作用)
+// ついでに console.table() も行う
+//                                                                                   ....
+// await await simple_table.sort({"label":"こうげき", "as_int":true, "reverse":true}, true ).then(response => console.log(response))
+// 
+//  ┌───────┬───────┬──────┬──────────┬──────────┬──────────┬──────────┬──────────┐
+//  │ (idx) │       │ HP   │ こうげき  │ ぼうぎょ  │ とくこう │ とくぼう  │ すばやさ  │
+//  ├───────┼───────┼──────┼──────────┼──────────┼──────────┼──────────┼──────────┤
+//  │     0 │ "赤1" │ "39" │ "52"     │ "43"     │ "60"     │ "50"     │ "65"     │
+//  │     1 │ "緑1" │ "45" │ "49"     │ "49"     │ "65"     │ "65"     │ "45"     │
+//  │     2 │ "青1" │ "44" │ "48"     │ "65"     │ "50"     │ "64"     │ "43"     │
+//  └───────┴───────┴──────┴──────────┴──────────┴──────────┴──────────┴──────────┘
 ```
 
 -------
+## 以下は古い情報
 
 ### 行の並び替え
 ```typescript
