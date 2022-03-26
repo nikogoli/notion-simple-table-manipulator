@@ -17,13 +17,13 @@ export type BasicFormula = "SUM" | "AVERAGE" | "COUNT" | "MAX" | "SECONDMAX" | "
 
 
 // 操作と設定の組
-export type ManipulateSet = {"manipulation":"sort", "options": SortInfo} | 
-                            {"manipulation":"numbering", "options": NumberingInfo|null} |
-                            {"manipulation":"colored", "options": ColorInfo} |
-                            {"manipulation":"fomula", "options": Array<CallInfo>} |
-                            {"manipulation":"transpose", "options": null} |
-                            {"manipulation":"calculate", "options": null}
-                            // | {"manipulation":"separate", "options": SeparateInfo}
+export type ManipulateSet = {"func": "add_number", "options": NumberingInfo } |
+                            {"func": "apply_color", "options": ColorInfo} |
+                            {"func": "calculate_table", "options": Array<CallInfo>} |
+                            {"func": "calculate_cell", "options": null} |
+                            {"func": "sort", "options": SortInfo} |
+                            {"func": "transpose", "options": null}
+
 
 
 

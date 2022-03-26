@@ -698,9 +698,9 @@ export class TableManipulator {
         default_rowidx: number,
         default_colidx: number,
         calls: Array<ManipulateSet>
-    ): Array<TableRowBlockObject> {
+    ): {"table_rows": Array<TableRowBlockObject>, "new_def_rowidx":number, "new_def_colidx":number} {
         // 処理のチェック
-        const manipus = calls.map( call => call.manipulation)
+        const manipus = calls.map( call => call.func)
         const trans_idx = manipus.findIndex(t => t=="transpose")
         if ( trans_idx != -1 ) {
             if ((manipus.length > 2) && (trans_idx!=0 && trans_idx!=manipus.length-1 )  ) {
@@ -712,46 +712,42 @@ export class TableManipulator {
         let table_rows = [...org_table_rows]
         let eval_limit_row = table_rows.length
         let eval_limit_col = response.tableinfo_list[0].table_width
-        const new_def_rowidx = default_rowidx
+        let new_def_rowidx = default_rowidx
         let new_def_colidx = default_colidx
         calls.forEach( call => {
-            if (call.manipulation == "colored") {
-                // テーブルの各行・列について、指定に応じて色を付ける
-                table_rows = change_text_color(call.options, new_def_rowidx, new_def_colidx, table_rows, eval_limit_row, eval_limit_col)
-            }
-            else if (call.manipulation == "fomula") {
-                // 各行・列に対して一様に数式評価を行う行・列を追加する
-                table_rows = add_formula_to_table(call.options, new_def_rowidx, new_def_colidx, table_rows, eval_limit_row, eval_limit_col)
-            }
-            else if (call.manipulation =="numbering") {
+            if (call.func == "add_number") {
                 // 各行に連番を振る
-                if (call.options!==null && call.options!==undefined) {
-                    table_rows = add_row_number(call.options, table_rows, new_def_rowidx)
-                } else {
-                    const ops: NumberingInfo = {"label":"", "start_number":1, "step":1, "text_format": "{num}"}
-                    table_rows = add_row_number(ops, table_rows, new_def_rowidx)
-                }
+                table_rows = add_row_number(call.options, table_rows, new_def_rowidx)
                 new_def_colidx += 1
                 eval_limit_col += 1
             }
-            else if (call.manipulation == "sort") {
+            else if (call.func == "apply_color") {
+                // テーブルの各行・列について、指定に応じて色を付ける
+                table_rows = change_text_color(call.options, new_def_rowidx, new_def_colidx, table_rows, eval_limit_row, eval_limit_col)
+            }
+            else if (call.func == "calculate_table") {
+                // 各行・列に対して一様に数式評価を行う行・列を追加する
+                table_rows = add_formula_to_table(call.options, new_def_rowidx, new_def_colidx, table_rows, eval_limit_row, eval_limit_col)
+            }
+            else if (call.func == "calculate_cell") {
+                // セルの命令に従い計算
+                table_rows = add_formula_to_cell(new_def_rowidx, new_def_colidx, table_rows)
+            }
+            else if (call.func == "sort") {
                 // テーブル(の行データ)をソートする
                 table_rows = sort_tablerows_by_col(call.options, new_def_rowidx, table_rows, eval_limit_row)
             }
-            else if (call.manipulation == "transpose") {
+            else if (call.func == "transpose") {
                 // テーブル(の行データ)を転置する
                 table_rows = [...Array(response.tableinfo_list[0].table_width)].map( (_x, idx) => {
                     const new_cells = table_rows.map( row => row.table_row.cells[idx] )
                     return {"object":"block", "type":"table_row", "table_row":{"cells": new_cells}}
                 } );
-                
-                [eval_limit_col, eval_limit_row] = [eval_limit_row, eval_limit_col]
+                [eval_limit_col, eval_limit_row] = [eval_limit_row, eval_limit_col];
+                [new_def_rowidx, new_def_colidx] = [new_def_colidx, new_def_rowidx]
             }
-            else if (call.manipulation == "calculate") {
-                // セルの命令に従い計算
-                table_rows = add_formula_to_cell(new_def_rowidx, new_def_colidx, table_rows)
-            }
+            
         })
-        return table_rows
+        return { table_rows, new_def_rowidx, new_def_colidx }
     }
 }
