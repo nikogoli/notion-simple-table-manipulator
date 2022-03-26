@@ -20,6 +20,7 @@ import { BlockObjectRequest,
 
 import {
     ManipulateSet,
+    AppendFromInfo,
     BasicFormula,
     CallInfo,
     ColorInfo,
@@ -164,9 +165,41 @@ export class TableManipulator {
             })
         }
     }
-    
 
-    public add_row_from_list() {}
+
+    public async add_row_from_list(
+        options: AppendFromInfo,
+        inspect = false
+    ): Promise<AppendBlockChildrenResponse> {
+        return await this.#get_lists().then(async (response) => {
+            const {texts, table_id} = response
+            
+            // 文字列のリストからテーブル形式へ
+            const table_rows = create_from_text(texts, 
+                {"separation":options.separation, "row_label":false, "col_label":options.label_separation}
+            )
+            const additional_rows = (options.label_separation===false) ? table_rows : table_rows.slice(1)
+
+            // inspcet == true のときは、リクエストには投げずにそのデータを返す
+            if (inspect) {
+                const pasedu_table = { "object": 'block', "type": "table", "has_children": true,
+                    "table": { "table_width": additional_rows[0].table_row.cells.length,
+                        "has_column_header": (options.label_separation!==false) ? true : false,
+                        "has_row_header": false,
+                        "children": additional_rows
+                    }
+                } as BlockObjectRequest
+                print_table([pasedu_table])
+                return Promise.resolve({ "results": [pasedu_table] } as AppendBlockChildrenResponse )
+            }
+
+            // 親要素にテーブルを追加
+            return await this.props.notion.blocks.children.append({
+                block_id: table_id,
+                children: additional_rows as Array<BlockObjectRequest>
+            })
+        })
+    }
 
 
     public readonly apply_color = {
