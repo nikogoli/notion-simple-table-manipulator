@@ -508,6 +508,31 @@ export class TableManipulator {
     }
 
 
+    async #get_lists(): Promise<{"texts_ids":Array<string>, "texts":Array<string>, "table_id":string}> {
+        return await this.notion_with_id.blocks.children.list().then( (response) => {
+            // 親要素以下の リスト要素を取得する
+            const texts: Array<string> = []
+            const texts_ids: Array<string> = []
+            let table_id =""
+            response.results.forEach(item => {
+                if ("type" in item) {
+                    if (item.type=="bulleted_list_item") {
+                        texts_ids.push(item.id)
+                        texts.push(item.bulleted_list_item.rich_text.map(t => t.plain_text).join())
+                    } else if (item.type=="numbered_list_item" ){
+                        texts_ids.push(item.id)
+                        texts.push(item.numbered_list_item.rich_text.map(t => t.plain_text).join())
+                    } else if (item.type=="table" ) {
+                        table_id = item.id
+                    }
+                }
+            })
+            if (!texts_ids.length) {throw new Error("子要素にリストブロックが見つかりません")}
+            return {texts_ids, texts, table_id}
+        })
+    }
+
+
     async #get_tables_and_rows( ): Promise<TableResponse> {
        const tableinfo_list:Array<TableProps> = []
        const results_list: Array<Array<PartialBlockObjectResponse|BlockObjectResponse>> = []
