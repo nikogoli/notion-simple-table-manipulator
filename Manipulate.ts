@@ -143,22 +143,10 @@ export class TableManipulator {
 
 
     public async add_number(
-        options: NumberingInfo | null,
+        options: NumberingInfo = { "label":"", "text_format":"{num}", "start_number": 1, "step": 1},
         inspect = false
     ): Promise<AppendBlockChildrenResponse> {
-        if (options === null ){
-            const options: NumberingInfo = { 
-                "label":"", "text_format":"{num}", "start_number": 1, "step": 1}
-            return await this.#table_manipulations({
-                calls: [ {"manipulation":"numbering", "options":options} ],
-                inspect
-            })
-        } else {
-            return await this.#table_manipulations({
-                calls: [ {"manipulation":"numbering", "options":options} ],
-                inspect
-            })
-        }
+        return await this.multi_processing([ {"func":"add_number", "options":options} ], inspect)
     }
 
 
