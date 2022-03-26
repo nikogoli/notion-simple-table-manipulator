@@ -41,6 +41,7 @@ import {
 } from "./base_types.ts"
 
 import {
+    add_formula_to_cell,
     add_formula_to_table,
     add_row_number,
     change_text_color,
@@ -427,7 +428,14 @@ export class TableManipulator {
     }
 
 
-    public calculate_cell(){}
+    public async calculate_cell(
+        inspect = false
+    ): Promise<AppendBlockChildrenResponse> {
+        return await this.table_manipulations({
+            calls: [{"manipulation":"calculate", "options":null}],
+            inspect
+        })
+    }
 
 
     public readonly convert ={
@@ -764,6 +772,10 @@ export class TableManipulator {
                 } );
                 
                 [eval_limit_col, eval_limit_row] = [eval_limit_row, eval_limit_col]
+            }
+            else if (call.manipulation == "calculate") {
+                // セルの命令に従い計算
+                table_rows = add_formula_to_cell(new_def_rowidx, new_def_colidx, table_rows)
             }
         })
         return table_rows
