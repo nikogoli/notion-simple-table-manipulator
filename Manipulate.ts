@@ -176,9 +176,9 @@ export class TableManipulator {
         //if : (() => {})
     }
 
-    
-    public readonly apply_calculation = {
         sum: (() => {}),
+
+    public readonly calculate_table = {
     }
 
 
@@ -242,7 +242,7 @@ export class TableManipulator {
     }
 
 
-    public calculate(){}
+    public calculate_cell(){}
 
 
     public readonly convert ={
