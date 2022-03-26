@@ -191,10 +191,7 @@ export class TableManipulator {
                 options: ColorInfo,
                 inspect = false
             ): Promise<AppendBlockChildrenResponse> => {
-                return await this.#table_manipulations({
-                    calls: [ {"manipulation":"colored", "options":options} ],
-                    inspect
-                })
+                return await this.multi_processing( [ {"func":"apply_color", "options":options} ], inspect)
             })
         //if : (() => {})
     }
@@ -334,8 +331,8 @@ export class TableManipulator {
                 const new_response: TableResponse = {
                     "tablerows_lists": [table_rows],
                     "tableinfo_list": new_info_list
-                }    
-                table_rows = this.#maltiple_manipulation(new_response, table_rows, default_rowidx, default_colidx, joint_options.calls)
+                };
+                ({ table_rows } = this.#maltiple_manipulation(new_response, table_rows, default_rowidx, default_colidx, joint_options.calls))
             }
     
             // 更新した行データから、table block object を作成する
@@ -343,6 +340,38 @@ export class TableManipulator {
                 "table": { "table_width": table_rows[0].table_row.cells.length,
                     "has_column_header": has_column_header,
                     "has_row_header": has_row_header,
+                    "children": table_rows
+                }
+            } as BlockObjectRequest
+            
+            return await this.#append_or_inspect([table_props], inspect)
+        })
+    }
+
+
+    public async multi_processing(
+        calls : Array<ManipulateSet>,
+        inspect = false
+    ): Promise<AppendBlockChildrenResponse> {
+        // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
+        return await this.#get_tables_and_rows()
+        .then(async (response) => {
+            // 行データから必要な情報を取り出す
+            const org_rowobjs_list: Array<TableRowBlockObject> = response.tablerows_lists[0]
+    
+            // 比較範囲からラベルを排除するため、デフォルト開始セルをヘッダーの有無に合わせて設定
+            const {has_row_header, has_column_header} = response.tableinfo_list[0]
+            const default_rowidx = (has_column_header) ? 1 : 0
+            const default_colidx = (has_row_header) ? 1 : 0
+    
+            const { table_rows, new_def_rowidx, new_def_colidx } = this.#maltiple_manipulation(response, org_rowobjs_list, default_rowidx, default_colidx, calls)
+            const table_width = table_rows[0].table_row.cells.length
+    
+            // 更新した行データから、table block object を作成する
+            const table_props = { "object": 'block', "type": "table", "has_children": true,
+                "table": { "table_width": table_width,
+                    "has_column_header": (new_def_rowidx==1),
+                    "has_row_header": (new_def_colidx==1),
                     "children": table_rows
                 }
             } as BlockObjectRequest
@@ -392,30 +421,21 @@ export class TableManipulator {
         options: SortInfo,
         inspect = false
 ): Promise<AppendBlockChildrenResponse> {
-    return await this.#table_manipulations({
-        calls: [ {"manipulation":"sort", "options":options} ],
-        inspect
-    })
+    return await this.multi_processing( [ {"func":"sort", "options":options} ], inspect )
 }
 
 
     public async transpose(
         inspect? : boolean
     ): Promise<AppendBlockChildrenResponse> {
-        return await this.#table_manipulations({
-            calls: [ {"manipulation":"transpose", "options":null} ],
-            inspect
-        })
+        return await this.multi_processing( [ {"func":"transpose", "options":null} ], inspect )
     }
 
 
     public async calculate_cell(
         inspect = false
     ): Promise<AppendBlockChildrenResponse> {
-        return await this.#table_manipulations({
-            calls: [{"manipulation":"calculate", "options":null}],
-            inspect
-        })
+        return await this.multi_processing( [{"func":"calculate_cell", "options":null}], inspect )
     }
 
 
@@ -561,13 +581,7 @@ export class TableManipulator {
         const formulas = calls.map( c => `${direction}_${c}` as FormulaCall)
         const lbs = labels ?? calls.map( c => String(c).replace("SECOND", "2nd ").replace("NAME", "(name)") )
         const calllist = formulas.map( (formula, idx) => {return {formula, "label":lbs[idx], excludes, max, min} })
-        return await this.#table_manipulations({
-            calls: [ {
-                        "manipulation":"fomula",
-                        "options": calllist
-                    } ],
-            inspect
-        })
+        return await this.multi_processing( [ { "func":"calculate_table", "options": calllist } ], inspect )
     }
 
 
@@ -587,42 +601,7 @@ export class TableManipulator {
             return formulas.map((formula, idx) => {return {formula, "label":lbs[idx], ...fc.options} as CallInfo })
         }).flat()
         
-        return await this.#table_manipulations({
-            calls: [ { "manipulation":"fomula", "options": formula_list } ],
-            inspect
-        })   
-    }
-
-
-    async #table_manipulations(
-        {   calls,
-            inspect }: GenericCall
-    ): Promise<AppendBlockChildrenResponse> {
-        // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
-        return await this.#get_tables_and_rows()
-        .then(async (response) => {
-            // 行データから必要な情報を取り出す
-            const org_rowobjs_list: Array<TableRowBlockObject> = response.tablerows_lists[0]
-    
-            // 比較範囲からラベルを排除するため、デフォルト開始セルをヘッダーの有無に合わせて設定
-            const {has_row_header, has_column_header} = response.tableinfo_list[0]
-            const default_rowidx = (has_column_header) ? 1 : 0
-            const default_colidx = (has_row_header) ? 1 : 0
-    
-            const table_rows = this.#maltiple_manipulation(response, org_rowobjs_list, default_rowidx, default_colidx, calls)
-            const table_width = table_rows[0].table_row.cells.length
-    
-            // 更新した行データから、table block object を作成する
-            const table_props = { "object": 'block', "type": "table", "has_children": true,
-                "table": { "table_width": table_width,
-                    "has_column_header": has_column_header,
-                    "has_row_header": has_row_header,
-                    "children": table_rows
-                }
-            } as BlockObjectRequest
-            
-            return await this.#append_or_inspect([table_props], inspect)
-        })
+        return await this.multi_processing( [ { "func":"calculate_table", "options": formula_list } ], inspect )   
     }
 
 
