@@ -733,12 +733,6 @@ export class TableManipulator {
             }
             else if (call.manipulation == "fomula") {
                 // 各行・列に対して一様に数式評価を行う行・列を追加する
-                call.options.forEach(info => {
-                    if (( ["R_MAXNAME","R_MINNAME","R_SECONDMAXNAME","R_SECONDMINNAME"].includes(info.formula) && new_def_rowidx==0) ||
-                        ( ["C_MAXNAME","C_MINNAME","C_SECONDMAXNAME","C_SECONDMINNAME"].includes(info.formula) && new_def_colidx==0)) {
-                            throw new Error("対応するラベル行・列がない場合、NAME系の formula は使用できません")
-                        }
-                })
                 table_rows = add_formula_to_table(call.options, new_def_rowidx, new_def_colidx, table_rows, eval_limit_row, eval_limit_col)
             }
             else if (call.manipulation =="numbering") {

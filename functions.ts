@@ -28,6 +28,13 @@ export function add_formula_to_table(
     limit_colidx = -1
 ): Array<TableRowBlockObject>{
 
+    formula_list.forEach(call => {
+        if (( ["R_MAXNAME","R_MINNAME","R_SECONDMAXNAME","R_SECONDMINNAME"].includes(call.formula) && default_rowidx==0) ||
+            ( ["C_MAXNAME","C_MINNAME","C_SECONDMAXNAME","C_SECONDMINNAME"].includes(call.formula) && default_colidx==0)) {
+                throw new Error("対応するラベル行・列がない場合、NAME系の formula は使用できません")
+            }
+    })
+
     const limit_r = (limit_rowidx < 0) ? table_rows.length : limit_rowidx
     const limit_l = (limit_colidx < 0) ? table_rows[0].table_row.cells.length : limit_colidx
     
@@ -613,7 +620,7 @@ export function sort_tablerows_by_col(
     limit_rowidx = table_rows.length
 ) :Array<TableRowBlockObject> {
 
-    if (info.label=="") {return table_rows}
+    if (info.label=="") { throw new Error("ソート基準の列名の指定がありません") }
 
     // 指定列の存在をチェック
     const labels = table_rows[0].table_row.cells.map(cell => (cell.length) ? cell.map(c=>c.plain_text).join() : "")
