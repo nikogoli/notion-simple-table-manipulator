@@ -505,42 +505,28 @@ function get_valid_indices(
     table_rows: Array<TableRowBlockObject>,
     options: ColorInfo | CallInfo
 ): Array<number>{
-    let valid_idxs: Array<number> = []
+    let valid_idxs = [...Array(table_rows[0].table_row.cells.length).keys()]
     const labels_for_r = table_rows.map(r => (r.table_row.cells[0].length) ? r.table_row.cells[0].map(t => t.plain_text).join() : "" )
     const labels_for_l = table_rows[0].table_row.cells.map(c => (c.length) ? c.map(t => t.plain_text).join() : "" )
-    if (options.targets == "all") {
-        if (options.excludes){
-            if (typeof(options.excludes[0]) == "number") {
-                valid_idxs = [...Array(table_rows[0].table_row.cells.length).keys()]
-                valid_idxs = valid_idxs.filter(i => !(options.excludes as Array<number>).includes(i))
-            } else {
-                let base: Array<string>
-                if ("direction" in options) {
-                    base = (options.direction =="R") ? labels_for_r : labels_for_l
-                } else {
-                    base = (options.formula.split("_")[0] == "R")  ? labels_for_r : labels_for_l
-                }
-                base.forEach((lb, idx) => {
-                    if (!((options.excludes as Array<string>).includes(lb))) { valid_idxs.push(idx) }
-                })
-            }
+    const is_num_array = function(v:Array<unknown>): v is Array<number> {
+        return typeof v[0] === "number"
+      }
+
+    if (options.excludes !== undefined){
+        if (is_num_array(options.excludes)) {
+            const {excludes} = options
+            const filtered = valid_idxs.filter(i => !excludes.includes(i))
+            valid_idxs = (filtered.length) ? filtered : valid_idxs
         } else {
-            valid_idxs = [...Array(table_rows[0].table_row.cells.length).keys()]
-        }
-    } else {
-        if (options.excludes) { throw new Error('targets が"all"以外のときは、excludes の指定はできません') }
-        if (typeof(options.targets[0]) == "number") {
-            valid_idxs = options.targets as Array<number>
-        } else {
+            const {excludes} = options
             let base: Array<string>
             if ("direction" in options) {
                 base = (options.direction =="R") ? labels_for_r : labels_for_l
             } else {
                 base = (options.formula.split("_")[0] == "R")  ? labels_for_r : labels_for_l
             }
-            base.forEach((lb, idx) => {
-                if ((options.targets as Array<string>).includes(lb)) { valid_idxs.push(idx) }
-            })
+            const filtered = valid_idxs.filter(idx => excludes.includes(base[idx]) )
+            valid_idxs = (filtered.length) ? filtered : valid_idxs
         }
     }
     return valid_idxs
