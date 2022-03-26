@@ -149,12 +149,12 @@ export class TableManipulator {
         if (options === null ){
             const options: NumberingInfo = { 
                 "label":"", "text_format":"{num}", "start_number": 1, "step": 1}
-            return await this.table_manipulations({
+            return await this.#table_manipulations({
                 calls: [ {"manipulation":"numbering", "options":options} ],
                 inspect
             })
         } else {
-            return await this.table_manipulations({
+            return await this.#table_manipulations({
                 calls: [ {"manipulation":"numbering", "options":options} ],
                 inspect
             })
@@ -203,7 +203,7 @@ export class TableManipulator {
                 options: ColorInfo,
                 inspect = false
             ): Promise<AppendBlockChildrenResponse> => {
-                return await this.table_manipulations({
+                return await this.#table_manipulations({
                     calls: [ {"manipulation":"colored", "options":options} ],
                     inspect
                 })
@@ -404,7 +404,7 @@ export class TableManipulator {
         options: SortInfo,
         inspect = false
 ): Promise<AppendBlockChildrenResponse> {
-    return await this.table_manipulations({
+    return await this.#table_manipulations({
         calls: [ {"manipulation":"sort", "options":options} ],
         inspect
     })
@@ -414,7 +414,7 @@ export class TableManipulator {
     public async transpose(
         inspect? : boolean
     ): Promise<AppendBlockChildrenResponse> {
-        return await this.table_manipulations({
+        return await this.#table_manipulations({
             calls: [ {"manipulation":"transpose", "options":null} ],
             inspect
         })
@@ -424,7 +424,7 @@ export class TableManipulator {
     public async calculate_cell(
         inspect = false
     ): Promise<AppendBlockChildrenResponse> {
-        return await this.table_manipulations({
+        return await this.#table_manipulations({
             calls: [{"manipulation":"calculate", "options":null}],
             inspect
         })
@@ -573,7 +573,7 @@ export class TableManipulator {
         const formulas = calls.map( c => `${direction}_${c}` as FormulaCall)
         const lbs = labels ?? calls.map( c => String(c).replace("SECOND", "2nd ").replace("NAME", "(name)") )
         const calllist = formulas.map( (formula, idx) => {return {formula, "label":lbs[idx], excludes, max, min} })
-        return await this.table_manipulations({
+        return await this.#table_manipulations({
             calls: [ {
                         "manipulation":"fomula",
                         "options": calllist
@@ -599,14 +599,14 @@ export class TableManipulator {
             return formulas.map((formula, idx) => {return {formula, "label":lbs[idx], ...fc.options} as CallInfo })
         }).flat()
         
-        return await this.table_manipulations({
+        return await this.#table_manipulations({
             calls: [ { "manipulation":"fomula", "options": formula_list } ],
             inspect
         })   
     }
 
 
-    public async table_manipulations(
+    async #table_manipulations(
         {   calls,
             inspect }: GenericCall
     ): Promise<AppendBlockChildrenResponse> {
