@@ -159,39 +159,7 @@ export class TableManipulator {
             )
             const additional_rows = (label_separation_by===undefined) ? table_rows : table_rows.slice(1)
 
-            // inspcet == true のときは、リクエストには投げずにそのデータを返す
-            if (basic_options !== undefined && basic_options.inspect === true) {
-                const pasedu_table = { "object": 'block', "type": "table", "has_children": true,
-                    "table": { "table_width": additional_rows[0].table_row.cells.length,
-                        "has_column_header": (label_separation_by===undefined),
-                        "has_row_header": false,
-                        "children": additional_rows
-                    }
-                } as BlockObjectRequest
-                print_table([pasedu_table])
-                return Promise.resolve({ "results": [pasedu_table] } as AppendBlockChildrenResponse )
-            }
-            if (basic_options !== undefined && basic_options.delete === false) {
-                // 親要素にテーブルを追加
-                return await this.props.notion.blocks.children.append({
-                    block_id: table_id,
-                    children: additional_rows as Array<BlockObjectRequest>
-                })
-            }
-            else {
-                return await texts_ids.reduce((promise, id) => {
-                    return promise.then(async () => {
-                        await this.props.notion.blocks.delete({ block_id: id })
-                    })
-                }, Promise.resolve() )
-                .then( async () => {
-                    // 親要素にテーブルを追加
-                    return await this.props.notion.blocks.children.append({
-                        block_id: table_id,
-                        children: additional_rows as Array<BlockObjectRequest>
-                    })
-                })
-            }
+            return await this.#append_or_inspect(additional_rows, texts_ids, basic_options, table_id)
         })
     }
 
@@ -563,20 +531,41 @@ export class TableManipulator {
 
 
     async #append_or_inspect(
-        data_list: Array<BlockObjectRequest>,
+        data_list: Array<BlockObjectRequest>|Array<TableRowBlockObject>,
         id_list: Array<string> | null,
-        basic_options?: {delete?:boolean, inspect?:boolean}
+        basic_options?: {delete?:boolean, inspect?:boolean},
+        target_id?: string
     ): Promise<AppendBlockChildrenResponse> {
+        const id = target_id ?? this.props.block_id
+
+        const is_tablerow_array = function(
+            v:Array<BlockObjectRequest>|Array<TableRowBlockObject>
+        ): v is Array<TableRowBlockObject> {
+            return v[0].type == "table_row"
+        }
         const append_and_end = ( async () => {
             // 親要素にテーブルを追加して終了
             return await this.props.notion.blocks.children.append({
-                block_id: this.props.block_id,
-                children: data_list
+                block_id: id,
+                children: data_list as Array<BlockObjectRequest>
             })
         })
         const print_and_end = (() => {
-            print_table(data_list)
-            return Promise.resolve({ "results": data_list } as AppendBlockChildrenResponse)
+            let tables: Array<BlockObjectRequest>
+            if (is_tablerow_array(data_list)) {
+                const pasedu_table = { "object": 'block', "type": "table", "has_children": true,
+                    "table": { "table_width": data_list[0].table_row.cells.length,
+                        "has_column_header": false,
+                        "has_row_header": false,
+                        "children": data_list
+                    }
+                } as BlockObjectRequest
+                tables = [pasedu_table]
+            } else {
+                tables = data_list
+            }
+            print_table(tables)
+            return Promise.resolve({ "results": tables } as AppendBlockChildrenResponse)
         })
         const delete_and_append_and_end = ( async (id_list:Array<string>) => {
             return await id_list.reduce((promise, id) => {
@@ -587,8 +576,8 @@ export class TableManipulator {
             .then( async () => {
                 // 親要素にテーブルを追加
                 return await this.props.notion.blocks.children.append({
-                    block_id: this.props.block_id,
-                    children: data_list
+                    block_id: id,
+                    children: data_list as Array<BlockObjectRequest>
                 })
             })
         })
