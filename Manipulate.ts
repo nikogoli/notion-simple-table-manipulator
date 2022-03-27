@@ -588,6 +588,7 @@ export class TableManipulator {
 
         if (this.props.keep_table){
             if (basic_options !== undefined && basic_options.inspect == true) { return print_and_end() }
+            else if (basic_options !== undefined && basic_options.delete == true && id_list !== null) {  return await delete_and_append_and_end(id_list)  }
             else { return append_and_end() }
         }
         if (id_list !== null) {
