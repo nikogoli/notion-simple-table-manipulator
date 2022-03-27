@@ -510,8 +510,9 @@ export function join_tabels(
 }
 
 
-//
-//
+// データを console.table() する 
+//      引数は、テーブルのリスト or リストアイテムのリストで、前者は行データをオブジェクト化してテーブルごとに.table()
+//      後者はそのまま string のリストにして .table()する
 export function print_table(
     data: Array<BlockObjectRequest>
 ): void {
@@ -527,16 +528,14 @@ export function print_table(
             } else {
                 return text_matrix.map( row => Object.fromEntries(row.map( (tx, idx) =>  [String(idx), tx])) )
             }
-        } else if ("table_row" in d){
-            const text_list = (d.table_row.cells as Array<RichTextItemResponse[]|[]>).map(
-                cell => (cell.length) ? cell.map(t => t.plain_text).join() : " "
-            )
-            return  Object.fromEntries( text_list.map( (t,idx) => [String(idx), t]) )
         } else if ("bulleted_list_item" in d){
             return (d.bulleted_list_item.rich_text as RichTextItemResponse[]|[]).map( t => t.plain_text).join()
+        } else {
+            throw new Error("not matched")
         }
-    }).flat()
-    console.table(texts)
+    })
+    if (typeof texts[0] =="string") { console.table(texts)}
+    else { texts.forEach(lis => console.table(lis)) }
 }
 
 
