@@ -53,6 +53,7 @@ import {
 export interface ApiInformations {
     client: Client
     url: string
+    keep_table?: boolean
 }
 
 
@@ -61,10 +62,11 @@ type WithoutId<P> =  Omit<P, "block_id" | "database_id" | "page_id">
 
 export class TableManipulator {
 
-    public readonly props: {"notion":Client, "url":string, "block_id":string} = {
+    public readonly props = {
         notion : new Client(),
         url : "",
         block_id: "",
+        keep_table: false,
     }
 
 
@@ -78,6 +80,8 @@ export class TableManipulator {
             if (!matched) {throw new Error("URLのパースに失敗しました")}
             this.props.block_id = matched[matched.length-1]
         }
+        if (info.keep_table !== undefined && info.keep_table == true) { this.props.keep_table = true }
+        else { this.props.keep_table = false }
         //console.log(`Block Id : "${this.props.block_id}"`)
     }
 
@@ -582,6 +586,10 @@ export class TableManipulator {
             })
         })
 
+        if (this.props.keep_table){
+            if (basic_options !== undefined && basic_options.inspect == true) { return print_and_end() }
+            else { return append_and_end() }
+        }
         if (id_list !== null) {
             if (basic_options === undefined) { return await delete_and_append_and_end(id_list) }
             else if (basic_options.inspect === true) { return print_and_end() }
