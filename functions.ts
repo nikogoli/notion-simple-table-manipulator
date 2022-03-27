@@ -268,7 +268,10 @@ export function create_from_text(
         // ラベル+セルのテキストの場合、セルごとに切り分けてレコードを作る
         const sep = options.label_separation_by
         const row_records: Array<Record<string, string>> = texts.map( tx =>{
-            return Object.fromEntries( tx.split(options.cell_separation_by).map( t => t.split(sep) ) )
+            return Object.fromEntries( tx.split(options.cell_separation_by).map( t => {
+                const splited = t.split(sep)
+                return (splited.length > 1) ? splited : ["", ...splited]
+            } ) )
         })
 
         // ラベル行とセル行をそれぞれ作り、table row block としてまとめる
