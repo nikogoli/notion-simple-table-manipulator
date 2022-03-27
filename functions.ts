@@ -40,7 +40,7 @@ export function add_formula_to_table(
     
     const cell_mat_by_row = create_cel_matrix("R", table_rows, default_rowidx, default_colidx, limit_r, limit_l)
     const cell_mat_by_col = create_cel_matrix("C", table_rows, default_rowidx, default_colidx, limit_r, limit_l)
-    const table_labels: Record<string, Array<Array<RichTextItemResponse>|[]>> = {
+    const cells_in_header: Record<"row"|"col", Array<Array<RichTextItemResponse>|[]>> = {
         "row": table_rows[0].table_row.cells,
         "col": table_rows.map(row => row.table_row.cells[0])
     }
@@ -48,23 +48,27 @@ export function add_formula_to_table(
     formula_list.forEach(info => {
         const [direction, formula] = info.formula.split("_")
         const label = info.label ?? formula
-        const valid_idxs = get_valid_indices(table_rows, info)
+        const {valid_row_idx, valid_col_idx} = get_valid_indices(table_rows, info, cells_in_header)
 
         let results_texts : Array< RichTextItemResponse[]> = []
         if (direction=="R"){
             cell_mat_by_row.forEach( (target, r_idx) => {
-                if (valid_idxs.includes(target[0].r_idx)) {
-                    const new_text_obj = evaluate_formula("R", formula, target, table_labels)
+                if (valid_row_idx.includes(target[0].r_idx)) {
+                    const cells = target.filter(c => valid_col_idx.includes(c.c_idx))
+                    const new_text_obj = evaluate_formula("R", formula, cells, cells_in_header)
                     table_rows[r_idx+default_rowidx].table_row.cells.push(new_text_obj)
                     results_texts.push(new_text_obj)
                 }
             })
-            if (default_rowidx==1) {table_rows[0].table_row.cells.push(set_celldata_obj("text", label))}
+            if (default_rowidx>0) {table_rows[0].table_row.cells.push(set_celldata_obj("text", label))}
         } else if (direction=="C") {
             let new_cells = cell_mat_by_col.map( target => {
-                return (valid_idxs.includes(target[0].c_idx) )
-                    ? evaluate_formula("C", formula, target, table_labels)
-                    : set_celldata_obj("text", "")
+                if (valid_col_idx.includes(target[0].c_idx)){
+                    const cells = target.filter(c => valid_row_idx.includes(c.r_idx))
+                    return evaluate_formula("C", formula, cells, cells_in_header)    
+                } else {
+                    return set_celldata_obj("text", "")
+                }
             })
             results_texts = [...new_cells]
             if (default_colidx > 0) {
@@ -308,22 +312,29 @@ export function change_text_color (
 
     const limit_r = (limit_rowidx < 0) ? table_rows.length : limit_rowidx
     const limit_l = (limit_colidx < 0) ? table_rows[0].table_row.cells.length : limit_colidx
+     const cells_in_header: Record<"row"|"col", Array<Array<RichTextItemResponse>|[]>> = {
+        "row": table_rows[0].table_row.cells,
+        "col": table_rows.map(row => row.table_row.cells[0])
+    }   
     const arranged_mat = create_cel_matrix(color_info.direction, table_rows, default_rowidx, default_colidx, limit_r, limit_l)
 
-    const valid_idxs = get_valid_indices(table_rows, color_info)
+    const {valid_col_idx, valid_row_idx} = get_valid_indices(table_rows, color_info, cells_in_header)
 
-    if (color_info.max!==undefined || color_info.min!==undefined){
+    if (color_info.max==undefined || color_info.min!==undefined){
         arranged_mat.forEach( (targets) => {
             // 評価対象のセルを並び替え、先頭と末尾のテキストを取得し、それと値が等しいセルを取得する (同じ値のセルが複数ある場合に対応)
-            if ((color_info.direction=="R" && valid_idxs.includes(targets[0].r_idx) ) ||
-                (color_info.direction=="C" && valid_idxs.includes(targets[0].c_idx) ))
-            {   
-                const sorted = targets.sort((a,b) => Number(a.text)-Number(b.text))
+            if ((color_info.direction=="R" && valid_row_idx.includes(targets[0].r_idx) ) ||
+                (color_info.direction=="C" && valid_col_idx.includes(targets[0].c_idx) ))
+            {
+                const cells = (color_info.direction=="R")
+                    ? targets.filter(c => valid_col_idx.includes(c.c_idx))
+                    : targets.filter(c => valid_row_idx.includes(c.r_idx))
+                const sorted = cells.sort((a,b) => Number(a.text)-Number(b.text))
                 const [min_tx, max_tx] = [sorted[0].text, sorted[sorted.length-1].text]            
-                const min_cells = targets.filter(item => item.text==min_tx)
-                const max_cells = targets.filter(item => item.text==max_tx)
+                const min_cells = cells.filter(item => item.text==min_tx)
+                const max_cells = cells.filter(item => item.text==max_tx)
 
-                targets.forEach(c => {
+                cells.forEach(c => {
                     if (color_info.max!==undefined && max_cells.includes(c) && c.cell.length){
                         table_rows[c.r_idx].table_row.cells[c.c_idx].forEach(c => c.annotations.color= color_info.max as ApiColor)
                     }
@@ -347,7 +358,7 @@ function evaluate_formula (
     direction: "R"|"C",
     formula:string,
     cells: Array<CellObject>,
-    table_labels: Record<string, Array<Array<RichTextItemResponse>|[]>>
+    cells_in_header: Record<"row"|"col", Array<Array<RichTextItemResponse>|[]>>
     ): Array<RichTextItemResponse>{
     if (formula=="SUM") {
         // 合計
@@ -375,9 +386,9 @@ function evaluate_formula (
             calls.forEach( (k, idx) => {
                 let labels: Array<Array<RichTextItemResponse>|[]>
                 if (direction=="R") {
-                    labels = cells_list[idx].map(c => c.c_idx).map(nm => table_labels.row[nm])
+                    labels = cells_list[idx].map(c => c.c_idx).map(nm => cells_in_header.col[nm])
                 } else {
-                    labels = cells_list[idx].map(c => c.r_idx).map(nm => table_labels.col[nm] )
+                    labels = cells_list[idx].map(c => c.r_idx).map(nm => cells_in_header.row[nm] )
                 }
                 if (labels.length >1) {
                     const space_inserted = [labels[0] , ...labels.slice(1).map(c => [set_celldata_obj("text", ", "), c]).flat() ]
@@ -419,33 +430,39 @@ function evaluate_formula (
 // ラベル判定用の行データのリスト + 範囲指定を含んだオプションオブジェクト → インデックスのリスト
 function get_valid_indices(
     table_rows: Array<TableRowBlockObject>,
-    options: ApplyColorOptions | FormulaOptions
-): Array<number>{
-    let valid_idxs = [...Array(table_rows[0].table_row.cells.length).keys()]
-    const labels_for_r = table_rows.map(r => (r.table_row.cells[0].length) ? r.table_row.cells[0].map(t => t.plain_text).join() : "" )
-    const labels_for_l = table_rows[0].table_row.cells.map(c => (c.length) ? c.map(t => t.plain_text).join() : "" )
+    options: ApplyColorOptions | FormulaOptions,
+    cells_in_header: Record<"row"|"col", Array<Array<RichTextItemResponse>|[]>>
+): Record<"valid_row_idx"|"valid_col_idx", Array<number>>{
+
     const is_num_array = function(v:Array<unknown>): v is Array<number> {
         return typeof v[0] === "number"
-      }
-
-    if (options.excludes !== undefined){
-        if (is_num_array(options.excludes)) {
-            const {excludes} = options
-            const filtered = valid_idxs.filter(i => !excludes.includes(i))
-            valid_idxs = (filtered.length) ? filtered : valid_idxs
-        } else {
-            const {excludes} = options
-            let base: Array<string>
-            if ("direction" in options) {
-                base = (options.direction =="R") ? labels_for_r : labels_for_l
-            } else {
-                base = (options.formula.split("_")[0] == "R")  ? labels_for_r : labels_for_l
-            }
-            const filtered = valid_idxs.filter(idx => excludes.includes(base[idx]) )
-            valid_idxs = (filtered.length) ? filtered : valid_idxs
-        }
     }
-    return valid_idxs
+    const evaluate_validity = function(
+        list: Array<string>|Array<number>|undefined,
+        base: Array<number>,
+        look_at: "cols"|"rows"
+    ): Array<number> {
+        if (list === undefined) { return base }
+        if (is_num_array(list)) {
+            const filtered = base.filter(i => !list.includes(i))
+            return (filtered.length) ? filtered : base
+        } else {
+            const str_base = (look_at =="rows")
+                    ? cells_in_header.col.map(c => (c.length) ? c.map(t=>t.plain_text).join() : "" )
+                    : cells_in_header.row.map(c => (c.length) ? c.map(t=>t.plain_text).join() : "" )
+            const filtered = base.filter(idx => !list.includes(str_base[idx]) )
+            return (filtered.length) ? filtered : base
+        }
+   }
+
+   const is_row = ("direction" in options) ? (options.direction =="R") : (options.formula.split("_")[0] == "R")
+   const [invalid_row, invalid_col] = (is_row) ? [options.not_apply_to, options.ignore] : [options.ignore, options.not_apply_to]
+
+   const base_col_idxs = [...Array(table_rows[0].table_row.cells.length).keys()]
+   const base_row_idxs = [...Array(table_rows.length).keys()]
+   const valid_row_idx = evaluate_validity(invalid_row, base_row_idxs, "rows")
+   const valid_col_idx = evaluate_validity(invalid_col, base_col_idxs, "cols")
+   return {valid_row_idx, valid_col_idx}
 }
 
 

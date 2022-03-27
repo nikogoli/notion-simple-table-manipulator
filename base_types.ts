@@ -76,7 +76,8 @@ interface BasicCall {
     formula: FormulaCall
     label?: string
     labels?: Array<string>
-    excludes? : Array<string> | Array<number>
+    not_apply_to? : Array<string> | Array<number>
+    ignore? : Array<string> | Array<number>
     max?: ApiColor
     min?: ApiColor
 }
@@ -91,7 +92,8 @@ export type NonDirectedMultiFormulaOptions = Omit<BasicCall, "append"|"formula"|
 // テキストの色変更の設定をまとめたもの
 export interface ApplyColorOptions {
     direction : "R" | "C"
-    excludes? : Array<string> | Array<number>
+    not_apply_to? : Array<string> | Array<number>
+    ignore? : Array<string> | Array<number>
     max?: ApiColor
     min?: ApiColor
 }

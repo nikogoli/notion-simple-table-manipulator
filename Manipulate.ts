@@ -197,88 +197,88 @@ export class TableManipulator {
                 formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
-                const {append, label, excludes, max, min } = formula_call
-                return await this.#add_formula({"calls":["SUM"], append, "labels":[label ?? "Sum"], excludes, max, min}, inspcet)
+                const {append, label, not_apply_to, max, min } = formula_call
+                return await this.#add_formula({"calls":["SUM"], append, "labels":[label ?? "Sum"], not_apply_to, max, min}, inspcet)
             }),
 
         average: ( async (
                 formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
-                const {append, label, excludes, max, min } = formula_call
-                return await this.#add_formula({"calls":["AVERAGE"], append, "labels":[label ?? "Average"], excludes, max, min}, inspcet)
+                const {append, label, not_apply_to, max, min } = formula_call
+                return await this.#add_formula({"calls":["AVERAGE"], append, "labels":[label ?? "Average"], not_apply_to, max, min}, inspcet)
             }),
 
         count: ( async (
                 formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
-                const {append, label, excludes, max, min } = formula_call
-                return await this.#add_formula({"calls":["COUNT"], append, "labels":[label ?? "Count"], excludes, max, min}, inspcet)
+                const {append, label, not_apply_to, max, min } = formula_call
+                return await this.#add_formula({"calls":["COUNT"], append, "labels":[label ?? "Count"], not_apply_to, max, min}, inspcet)
             }),
         
         max: ( async (
                 formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
-                const {append, label, excludes, max, min } = formula_call
-                return await this.#add_formula({"calls":["MAX"], append, "labels":[label ?? "Max"], excludes, max, min}, inspcet)
+                const {append, label, not_apply_to, max, min } = formula_call
+                return await this.#add_formula({"calls":["MAX"], append, "labels":[label ?? "Max"], not_apply_to, max, min}, inspcet)
             }),
 
         second_max: ( async (
                 formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
-                const {append, label, excludes, max, min } = formula_call
-                return await this.#add_formula({"calls":["SECONDMAX"], append, "labels":[label ?? "2nd Max"], excludes, max, min}, inspcet)
+                const {append, label, not_apply_to, max, min } = formula_call
+                return await this.#add_formula({"calls":["SECONDMAX"], append, "labels":[label ?? "2nd Max"], not_apply_to, max, min}, inspcet)
             }),
 
         max_name: ( async (
                 formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
-                const {append, label, excludes, max, min } = formula_call
-                return await this.#add_formula({"calls":["MAXNAME"], append, "labels":[label ?? "Max(name)"], excludes, max, min}, inspcet)
+                const {append, label, not_apply_to, max, min } = formula_call
+                return await this.#add_formula({"calls":["MAXNAME"], append, "labels":[label ?? "Max(name)"], not_apply_to, max, min}, inspcet)
             }),
 
         second_max_name: ( async (
                 formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
-                const {append, label, excludes, max, min } = formula_call
-                return await this.#add_formula({"calls":["SECONDMAXNAME"], append, "labels":[label ?? "2nd Max(name)"], excludes, max, min}, inspcet)
+                const {append, label, not_apply_to, max, min } = formula_call
+                return await this.#add_formula({"calls":["SECONDMAXNAME"], append, "labels":[label ?? "2nd Max(name)"], not_apply_to, max, min}, inspcet)
             }),
 
         min: ( async (
                 formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
-                const {append, label, excludes, max, min } = formula_call
-                return await this.#add_formula({"calls":["MIN"], append, "labels":[label ?? "Min"], excludes, max, min}, inspcet)
+                const {append, label, not_apply_to, max, min } = formula_call
+                return await this.#add_formula({"calls":["MIN"], append, "labels":[label ?? "Min"], not_apply_to, max, min}, inspcet)
             }),
 
         second_min: ( async (
                 formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
-                const {append, label, excludes, max, min } = formula_call
-                return await this.#add_formula({"calls":["SECONDMIN"], append, "labels":[label ?? "2nd Min"], excludes, max, min}, inspcet)
+                const {append, label, not_apply_to, max, min } = formula_call
+                return await this.#add_formula({"calls":["SECONDMIN"], append, "labels":[label ?? "2nd Min"], not_apply_to, max, min}, inspcet)
             }),
 
         min_name: ( async (
                 formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
-                const {append, label, excludes, max, min } = formula_call
-                return await this.#add_formula({"calls":["MINNAME"], append, "labels":[label ?? "Min(name)"], excludes, max, min}, inspcet)
+                const {append, label, not_apply_to, max, min } = formula_call
+                return await this.#add_formula({"calls":["MINNAME"], append, "labels":[label ?? "Min(name)"], not_apply_to, max, min}, inspcet)
             }),
 
         second_min_name: ( async (
                 formula_call: SingleFormulaOptions,
                 inspcet = false
             ) => {
-                const {append, label, excludes, max, min } = formula_call
-                return await this.#add_formula({"calls":["SECONDMINNAME"], append, "labels":[label ?? "2nd Min(name)"], excludes, max, min}, inspcet)
+                const {append, label, not_apply_to, max, min } = formula_call
+                return await this.#add_formula({"calls":["SECONDMINNAME"], append, "labels":[label ?? "2nd Min(name)"], not_apply_to, max, min}, inspcet)
             }),
 
         multiple : ( async (
@@ -584,11 +584,11 @@ export class TableManipulator {
         formula_call : DirectedMultiFormulaOptions,
         inspect = false
     ): Promise<AppendBlockChildrenResponse> {
-        const {append, calls, labels, excludes, max, min} = formula_call
+        const {append, calls, labels, not_apply_to, max, min} = formula_call
         const direction = (append==="newRow") ? "C" : "R"
         const formulas = calls.map( c => `${direction}_${c}` as FormulaCall)
         const lbs = labels ?? calls.map( c => String(c).replace("SECOND", "2nd ").replace("NAME", "(name)") )
-        const calllist = formulas.map( (formula, idx) => {return {formula, "label":lbs[idx], excludes, max, min} })
+        const calllist = formulas.map( (formula, idx) => {return {formula, "label":lbs[idx], not_apply_to, max, min} })
         return await this.multi_processing( [ { "func":"calculate_table", "options": calllist } ], inspect )
     }
 
