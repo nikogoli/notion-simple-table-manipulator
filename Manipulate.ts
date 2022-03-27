@@ -139,18 +139,18 @@ export class TableManipulator {
 
     public async add_number(
         options: NumberingOptions = { "label":"", "text_format":"{num}", "start_number": 1, "step": 1},
-        inspect = false
+        basic_options?: {delete?:boolean, inspect?:boolean}
     ): Promise<AppendBlockChildrenResponse> {
-        return await this.multi_processing([ {"func":"add_number", "options":options} ], inspect)
+        return await this.multi_processing([ {"func":"add_number", "options":options} ], basic_options)
     }
 
 
     public async add_row_from_list(
         options: AppendFromOptions,
-        inspect = false
+        basic_options?: {delete?:boolean, inspect?:boolean}
     ): Promise<AppendBlockChildrenResponse> {
         return await this.#get_lists().then(async (response) => {
-            const {texts, table_id} = response
+            const {texts, table_id, texts_ids} = response
             const {cell_separation_by, label_separation_by} = options
 
             // 文字列のリストからテーブル形式へ
@@ -160,7 +160,7 @@ export class TableManipulator {
             const additional_rows = (label_separation_by===undefined) ? table_rows : table_rows.slice(1)
 
             // inspcet == true のときは、リクエストには投げずにそのデータを返す
-            if (inspect) {
+            if (basic_options !== undefined && basic_options.inspect === true) {
                 const pasedu_table = { "object": 'block', "type": "table", "has_children": true,
                     "table": { "table_width": additional_rows[0].table_row.cells.length,
                         "has_column_header": (label_separation_by===undefined),
@@ -171,12 +171,27 @@ export class TableManipulator {
                 print_table([pasedu_table])
                 return Promise.resolve({ "results": [pasedu_table] } as AppendBlockChildrenResponse )
             }
-
-            // 親要素にテーブルを追加
-            return await this.props.notion.blocks.children.append({
-                block_id: table_id,
-                children: additional_rows as Array<BlockObjectRequest>
-            })
+            if (basic_options !== undefined && basic_options.delete === false) {
+                // 親要素にテーブルを追加
+                return await this.props.notion.blocks.children.append({
+                    block_id: table_id,
+                    children: additional_rows as Array<BlockObjectRequest>
+                })
+            }
+            else {
+                return await texts_ids.reduce((promise, id) => {
+                    return promise.then(async () => {
+                        await this.props.notion.blocks.delete({ block_id: id })
+                    })
+                }, Promise.resolve() )
+                .then( async () => {
+                    // 親要素にテーブルを追加
+                    return await this.props.notion.blocks.children.append({
+                        block_id: table_id,
+                        children: additional_rows as Array<BlockObjectRequest>
+                    })
+                })
+            }
         })
     }
 
@@ -184,9 +199,9 @@ export class TableManipulator {
     public readonly apply_color = {
         maxmin : ( async ( 
                 options: ApplyColorOptions,
-                inspect = false
+                basic_options?: {delete?:boolean, inspect?:boolean}
             ): Promise<AppendBlockChildrenResponse> => {
-                return await this.multi_processing( [ {"func":"apply_color", "options":options} ], inspect)
+                return await this.multi_processing( [ {"func":"apply_color", "options":options} ], basic_options)
             })
         //if : (() => {})
     }
@@ -195,112 +210,112 @@ export class TableManipulator {
     public readonly calculate_table = {
         sum: ( async (
                 formula_call: SingleFormulaOptions,
-                inspcet = false
+                basic_options?: {delete?:boolean, inspect?:boolean}
             ) => {
                 const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["SUM"], append, "labels":[label ?? "Sum"], not_apply_to, max, min}, inspcet)
+                return await this.#add_formula({"calls":["SUM"], append, "labels":[label ?? "Sum"], not_apply_to, max, min}, basic_options)
             }),
 
         average: ( async (
                 formula_call: SingleFormulaOptions,
-                inspcet = false
+                basic_options?: {delete?:boolean, inspect?:boolean}
             ) => {
                 const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["AVERAGE"], append, "labels":[label ?? "Average"], not_apply_to, max, min}, inspcet)
+                return await this.#add_formula({"calls":["AVERAGE"], append, "labels":[label ?? "Average"], not_apply_to, max, min}, basic_options)
             }),
 
         count: ( async (
                 formula_call: SingleFormulaOptions,
-                inspcet = false
+                basic_options?: {delete?:boolean, inspect?:boolean}
             ) => {
                 const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["COUNT"], append, "labels":[label ?? "Count"], not_apply_to, max, min}, inspcet)
+                return await this.#add_formula({"calls":["COUNT"], append, "labels":[label ?? "Count"], not_apply_to, max, min}, basic_options)
             }),
         
         max: ( async (
                 formula_call: SingleFormulaOptions,
-                inspcet = false
+                basic_options?: {delete?:boolean, inspect?:boolean}
             ) => {
                 const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["MAX"], append, "labels":[label ?? "Max"], not_apply_to, max, min}, inspcet)
+                return await this.#add_formula({"calls":["MAX"], append, "labels":[label ?? "Max"], not_apply_to, max, min}, basic_options)
             }),
 
         second_max: ( async (
                 formula_call: SingleFormulaOptions,
-                inspcet = false
+                basic_options?: {delete?:boolean, inspect?:boolean}
             ) => {
                 const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["SECONDMAX"], append, "labels":[label ?? "2nd Max"], not_apply_to, max, min}, inspcet)
+                return await this.#add_formula({"calls":["SECONDMAX"], append, "labels":[label ?? "2nd Max"], not_apply_to, max, min}, basic_options)
             }),
 
         max_name: ( async (
                 formula_call: SingleFormulaOptions,
-                inspcet = false
+                basic_options?: {delete?:boolean, inspect?:boolean}
             ) => {
                 const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["MAXNAME"], append, "labels":[label ?? "Max(name)"], not_apply_to, max, min}, inspcet)
+                return await this.#add_formula({"calls":["MAXNAME"], append, "labels":[label ?? "Max(name)"], not_apply_to, max, min}, basic_options)
             }),
 
         second_max_name: ( async (
                 formula_call: SingleFormulaOptions,
-                inspcet = false
+                basic_options?: {delete?:boolean, inspect?:boolean}
             ) => {
                 const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["SECONDMAXNAME"], append, "labels":[label ?? "2nd Max(name)"], not_apply_to, max, min}, inspcet)
+                return await this.#add_formula({"calls":["SECONDMAXNAME"], append, "labels":[label ?? "2nd Max(name)"], not_apply_to, max, min}, basic_options)
             }),
 
         min: ( async (
                 formula_call: SingleFormulaOptions,
-                inspcet = false
+                basic_options?: {delete?:boolean, inspect?:boolean}
             ) => {
                 const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["MIN"], append, "labels":[label ?? "Min"], not_apply_to, max, min}, inspcet)
+                return await this.#add_formula({"calls":["MIN"], append, "labels":[label ?? "Min"], not_apply_to, max, min}, basic_options)
             }),
 
         second_min: ( async (
                 formula_call: SingleFormulaOptions,
-                inspcet = false
+                basic_options?: {delete?:boolean, inspect?:boolean}
             ) => {
                 const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["SECONDMIN"], append, "labels":[label ?? "2nd Min"], not_apply_to, max, min}, inspcet)
+                return await this.#add_formula({"calls":["SECONDMIN"], append, "labels":[label ?? "2nd Min"], not_apply_to, max, min}, basic_options)
             }),
 
         min_name: ( async (
                 formula_call: SingleFormulaOptions,
-                inspcet = false
+                basic_options?: {delete?:boolean, inspect?:boolean}
             ) => {
                 const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["MINNAME"], append, "labels":[label ?? "Min(name)"], not_apply_to, max, min}, inspcet)
+                return await this.#add_formula({"calls":["MINNAME"], append, "labels":[label ?? "Min(name)"], not_apply_to, max, min}, basic_options)
             }),
 
         second_min_name: ( async (
                 formula_call: SingleFormulaOptions,
-                inspcet = false
+                basic_options?: {delete?:boolean, inspect?:boolean}
             ) => {
                 const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["SECONDMINNAME"], append, "labels":[label ?? "2nd Min(name)"], not_apply_to, max, min}, inspcet)
+                return await this.#add_formula({"calls":["SECONDMINNAME"], append, "labels":[label ?? "2nd Min(name)"], not_apply_to, max, min}, basic_options)
             }),
 
         multiple : ( async (
                 formula_calls: Array<DirectedMultiFormulaOptions>,
-                inspcet = false
-            ) => { return await this.#add_formula_multi(formula_calls, inspcet) }),
+                basic_options?: {delete?:boolean, inspect?:boolean}
+            ) => { return await this.#add_formula_multi(formula_calls, basic_options) }),
         
         multiple_col : ( async (
                 formula_call: NonDirectedMultiFormulaOptions,
-                inspcet = false
-            ) => { return await this.#add_formula({"append":"newColumn", ...formula_call}, inspcet) }),
+                basic_options?: {delete?:boolean, inspect?:boolean}
+            ) => { return await this.#add_formula({"append":"newColumn", ...formula_call}, basic_options) }),
         
         multimple_row : ( async (
             formula_call: NonDirectedMultiFormulaOptions,
-                inspcet = false
-            ) => { return await this.#add_formula({"append":"newRow", ...formula_call}, inspcet) }),
+                basic_options?: {delete?:boolean, inspect?:boolean}
+            ) => { return await this.#add_formula({"append":"newRow", ...formula_call}, basic_options) }),
     }
 
 
     public async join(
         joint_options? : {calls: Array<ManipulateSet>},
-        inspect = false  
+        basic_options?: {delete?:boolean, inspect?:boolean}
     ): Promise<AppendBlockChildrenResponse> {
     
         // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
@@ -339,14 +354,14 @@ export class TableManipulator {
                 }
             } as BlockObjectRequest
             
-            return await this.#append_or_inspect([table_props], response.tableinfo_list.map(l=>l.id), inspect)
+            return await this.#append_or_inspect([table_props], response.tableinfo_list.map(l=>l.id), basic_options )
         })
     }
 
 
     public async multi_processing(
         calls : Array<ManipulateSet>,
-        inspect = false
+        basic_options?: {delete?:boolean, inspect?:boolean}
     ): Promise<AppendBlockChildrenResponse> {
         // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
         return await this.#get_tables_and_rows()
@@ -371,14 +386,14 @@ export class TableManipulator {
                 }
             } as BlockObjectRequest
             
-            return await this.#append_or_inspect([table_props], response.tableinfo_list.map(l=>l.id), inspect)
+            return await this.#append_or_inspect([table_props], response.tableinfo_list.map(l=>l.id), basic_options)
         })
     }
 
 
     public async separate(
         options: SeparateOptions,
-        inspect?: boolean
+        basic_options?: {delete?:boolean, inspect?:boolean}
     ): Promise<AppendBlockChildrenResponse> {
             
         // 親要素以下の table block object の id と ヘッダーの設定と元のテーブルの列数を取得する
@@ -405,37 +420,37 @@ export class TableManipulator {
                 }
             }) as Array<BlockObjectRequest>
 
-            return await this.#append_or_inspect( table_props_list, response.tableinfo_list.map(l=>l.id), inspect )
+            return await this.#append_or_inspect( table_props_list, response.tableinfo_list.map(l=>l.id), basic_options)
         })
     }
 
 
     public async sort(
         options: SortOptions,
-        inspect = false
+        basic_options?: {delete?:boolean, inspect?:boolean}
 ): Promise<AppendBlockChildrenResponse> {
-    return await this.multi_processing( [ {"func":"sort", "options":options} ], inspect )
+    return await this.multi_processing( [ {"func":"sort", "options":options} ], basic_options )
 }
 
 
     public async transpose(
-        inspect? : boolean
+        basic_options?: {delete?:boolean, inspect?:boolean}
     ): Promise<AppendBlockChildrenResponse> {
-        return await this.multi_processing( [ {"func":"transpose", "options":null} ], inspect )
+        return await this.multi_processing( [ {"func":"transpose", "options":null} ], basic_options )
     }
 
 
     public async calculate_cell(
-        inspect = false
+        basic_options?: {delete?:boolean, inspect?:boolean}
     ): Promise<AppendBlockChildrenResponse> {
-        return await this.multi_processing( [{"func":"calculate_cell", "options":null}], inspect )
+        return await this.multi_processing( [{"func":"calculate_cell", "options":null}], basic_options )
     }
 
 
     public readonly convert ={
         to_list : ( async (
             options: ConvertToOptions,
-            inspect = false
+            basic_options?: {delete?:boolean, inspect?:boolean}
         ): Promise<AppendBlockChildrenResponse> =>  {
             return await this.#get_tables_and_rows()
             .then(async (response) => {
@@ -462,13 +477,13 @@ export class TableManipulator {
                     }
                 }) as Array<BlockObjectRequest>
                 
-                return await this.#append_or_inspect(list_items, response.tableinfo_list.map(l=>l.id), inspect)
+                return await this.#append_or_inspect(list_items, response.tableinfo_list.map(l=>l.id), basic_options )
             })
         }),
 
         from_list : ( async (
             options: ConvertFromOptions,
-            inspect = false
+            basic_options?: {delete?:boolean, inspect?:boolean}
         ): Promise<AppendBlockChildrenResponse> => {
             return await this.#get_lists().then(async (response) => {
                 const {texts} = response
@@ -484,7 +499,7 @@ export class TableManipulator {
                     }
                 } as BlockObjectRequest
                         
-                return await this.#append_or_inspect([table_props], response.texts_ids, inspect)
+                return await this.#append_or_inspect([table_props], response.texts_ids, basic_options )
             })
         })
     }
@@ -492,7 +507,7 @@ export class TableManipulator {
 
     public async from_file(
         import_info: ImportOptions,
-        inspect = false
+        basic_options?: {delete?:boolean, inspect?:boolean}
     ): Promise<AppendBlockChildrenResponse> {
         const file_name = import_info.path.split("/").reverse()[0]
         if (!file_name.endsWith(".csv")  && !file_name.endsWith(".json")) {
@@ -542,7 +557,7 @@ export class TableManipulator {
                 }
             } as BlockObjectRequest
             
-            return await this.#append_or_inspect([table_props], null, inspect)
+            return await this.#append_or_inspect([table_props], null, basic_options )
         })
     }
 
@@ -550,20 +565,20 @@ export class TableManipulator {
     async #append_or_inspect(
         data_list: Array<BlockObjectRequest>,
         id_list: Array<string> | null,
-        inspect: boolean | undefined
+        basic_options?: {delete?:boolean, inspect?:boolean}
     ): Promise<AppendBlockChildrenResponse> {
-        // inspcet == true のときは、リクエストには投げずにそのデータを返す
-        if (inspect) {
-            print_table(data_list)
-            return Promise.resolve({ "results": data_list } as AppendBlockChildrenResponse)
-        }
-        if (id_list === null) {
-            // 親要素にテーブルを追加
+        const append_and_end = ( async () => {
+            // 親要素にテーブルを追加して終了
             return await this.props.notion.blocks.children.append({
                 block_id: this.props.block_id,
                 children: data_list
             })
-        } else {
+        })
+        const print_and_end = (() => {
+            print_table(data_list)
+            return Promise.resolve({ "results": data_list } as AppendBlockChildrenResponse)
+        })
+        const delete_and_append_and_end = ( async (id_list:Array<string>) => {
             return await id_list.reduce((promise, id) => {
                 return promise.then(async () => {
                     await this.props.notion.blocks.delete({ block_id: id })
@@ -576,20 +591,31 @@ export class TableManipulator {
                     children: data_list
                 })
             })
+        })
+
+        if (id_list !== null) {
+            if (basic_options === undefined) { return await delete_and_append_and_end(id_list) }
+            else if (basic_options.inspect === true) { return print_and_end() }
+            else if (basic_options.delete === false) { return await append_and_end() }
+            else { return await delete_and_append_and_end(id_list) }
+        } else {
+            if (basic_options === undefined) { return await append_and_end() }
+            else if (basic_options.inspect === true) { return print_and_end() }
+            else { return await append_and_end() }
         }
     }
 
 
     async #add_formula(
         formula_call : DirectedMultiFormulaOptions,
-        inspect = false
+        basic_options?: {delete?:boolean, inspect?:boolean}
     ): Promise<AppendBlockChildrenResponse> {
         const {append, calls, labels, not_apply_to, max, min} = formula_call
         const direction = (append==="newRow") ? "C" : "R"
         const formulas = calls.map( c => `${direction}_${c}` as FormulaCall)
         const lbs = labels ?? calls.map( c => String(c).replace("SECOND", "2nd ").replace("NAME", "(name)") )
         const calllist = formulas.map( (formula, idx) => {return {formula, "label":lbs[idx], not_apply_to, max, min} })
-        return await this.multi_processing( [ { "func":"calculate_table", "options": calllist } ], inspect )
+        return await this.multi_processing( [ { "func":"calculate_table", "options": calllist } ], basic_options )
     }
 
 
@@ -600,7 +626,7 @@ export class TableManipulator {
             labels?: Array<string>,
             options? : Omit<FormulaOptions, "formula"|"label">,
         }>,
-        inspect = false
+        basic_options?: {delete?:boolean, inspect?:boolean}
     ): Promise<AppendBlockChildrenResponse> {
         const formula_list = formula_calls.map( fc => {
             const direction = (fc.append==="newRow") ? "C" :"R"
@@ -609,7 +635,7 @@ export class TableManipulator {
             return formulas.map((formula, idx) => {return {formula, "label":lbs[idx], ...fc.options} as FormulaOptions })
         }).flat()
         
-        return await this.multi_processing( [ { "func":"calculate_table", "options": formula_list } ], inspect )   
+        return await this.multi_processing( [ { "func":"calculate_table", "options": formula_list } ], basic_options )   
     }
 
 
