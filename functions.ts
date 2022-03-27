@@ -551,7 +551,8 @@ export function separate_table(
     if (options.method == "by_number") {
         // 0始まりのインデックスが number で割り切れたとき、その行の上で分割する
         const {number} = options.options
-        is_cut = [...Array(table_rows.length).keys()].map(i => (i==0) ? false : i%number==0)
+        is_cut = (default_rowidx==0) ? [...Array(table_rows.length).keys()].map(i => (i==0) ? false : i%number==0)
+                : [false, ...[...Array(table_rows.length-1).keys()].map(i => (i==0) ? false : i%number==0)]
     } else if (options.method == "by_blank") {
         // 空白セルの数が行の総セル数と等しいとき、その行の上で分割する
         const table_width = table_rows[0].table_row.cells.length
