@@ -197,11 +197,12 @@ await simple_table.add_row_from_list({cell_separation_by:"、", label_separation
     
 以下のように、notion 上でセルに「row-summation」をしめす数式命令「=R_SUM」を追加する。
 
-数式命令の後には、範囲指定として、「(」に続けて計算範囲の最初のセルと最後のセルのインデックスを記述する。`=R_SUM(1,7)`は、「その行の第1列セルから第7列セルまでの値の合計値」を意味することになる。
+数式命令の後には、範囲指定として、「(」に続けて計算範囲の最初のセルと最後のセルのインデックスを記述する。`=R_SUM(1,6)`は、「その行の第1列セルから第6列セルまでの値の合計値」を意味することになる。
 
-指定を省略した場合、ラベル(ヘッダー)部分を除いたその行あるいは列の先頭から数式命令のセルの手前まで、が範囲になる。今回は第0列がラベル部、数式命令のセルが第8列なので、`=R_SUM()`は`=R_SUM(1,7)`と同じ意味となる。
+指定を省略した場合、ラベル(ヘッダー)部分を除いたその行あるいは列の先頭から数式命令のセルの手前まで、が範囲になる。今回は第0列がラベル部、数式命令のセルが第7列なので、`=R_SUM()`は`=R_SUM(1,6)`と同じ意味となる。
 
-![08-1](https://user-images.githubusercontent.com/49331838/160287788-e5bad48d-a52f-41c2-bf1c-b0111240d636.png)
+![08-1](https://user-images.githubusercontent.com/49331838/160291409-255046b3-2840-4470-b747-8a52677afb96.png)
+
 
 ```typescript
 await simple_table.calculate_cell()
@@ -309,13 +310,17 @@ await simple_table.convert.to_list({cell_separation_by:","})
 
 ### 13. リストをテーブルに変換する
 
-notion のリストからテーブルを作成してみる。
+12 で作成した notion のリストから、再びテーブルを作成してみる。
 
-仕組み自体は 7. の「リストから行を追加」とほぼ同じ。ただし、  Header row と Header column を有効にするかどうかの指定が必要。
+仕組み自体は 7. の「リストから行を追加」とほぼ同じ。ただし今回はテーブル自体を作成するので、 Header row と Header column を有効にするかどうかの指定が必要となる。
 
 今回はラベルがテキストに含まれていないので、ラベルの区切り文字は指定しない。
 
-![13](https://user-images.githubusercontent.com/49331838/160290172-8b48d0d0-b16f-4430-aa16-a978bceac94d.png)
-
+```typescript
+await simple_table.convert.from_list({cell_separation_by:",", use_header_col: true, use_header_row: true})
+.then(response => console.log(response))
+```
 
 処理が正常に行われると、次のような simple table が作成される。
+
+![13](https://user-images.githubusercontent.com/49331838/160290172-8b48d0d0-b16f-4430-aa16-a978bceac94d.png)
