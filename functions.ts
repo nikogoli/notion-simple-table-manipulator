@@ -84,7 +84,8 @@ export function add_formula_to_table(
             throw new Error("formula が不適切です")
         }
         if (info.max || info.min) {
-            const sorted = results_texts.sort((a,b) => Number(a[0].plain_text) - Number(b[0].plain_text))
+            const notemp_cells = results_texts.filter(c => c.length > 0)
+            const sorted = notemp_cells.sort((a,b) => Number(a[0].plain_text) - Number(b[0].plain_text))
             if (info.max) {
                 const max_cells = sorted.filter(item => item[0].plain_text==sorted[sorted.length-1][0].plain_text)
                 max_cells.forEach( c => c[0].annotations.color = info.max as ApiColor )
