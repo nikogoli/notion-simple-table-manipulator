@@ -141,14 +141,28 @@ export class TableManipulator {
     }
 
 
+    /**
+    * Adds row-number as a left-est cell to each rows.
+    * 
+    * @param {string} label
+    * @param {string} [text_format="{num}"] : Optional, default "{num}". {num} in this param is replaced to number.
+    * @param {string} [start_number=1] : Optional, default 1.
+    * @param {string} [step=1] : Optional, default 1.
+    */
     public async add_number(
         options: NumberingOptions = { "label":"", "text_format":"{num}", "start_number": 1, "step": 1},
         basic_options?: {delete?:boolean, inspect?:boolean}
     ): Promise<AppendBlockChildrenResponse> {
         return await this.multi_processing([ {"func":"add_number", "options":options} ], basic_options)
     }
+    
 
-
+    /**
+    * Adds rows to the table from lists in the same parent block.
+    * 
+    * @param {string} cell_separation_by :  Each line-text is splited by this param
+    * @param {string} [label_separation_by] :  Optional. Each text is splited by this param to column-label and cell-text
+    */
     public async add_row_from_list(
         options: AppendFromOptions,
         basic_options?: {delete?:boolean, inspect?:boolean}
@@ -169,6 +183,16 @@ export class TableManipulator {
 
 
     public readonly apply_color = {
+
+        /**
+        * changes colors of max / min cells' texts in rows or colmuns in table
+        * 
+        * @param {"R"|"C"} direction : Calculates max/min for each row, or for each column
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Color-changes are not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Max/min-calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
+        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        */
         maxmin : ( async ( 
                 options: ApplyColorOptions,
                 basic_options?: {delete?:boolean, inspect?:boolean}
@@ -180,6 +204,17 @@ export class TableManipulator {
 
 
     public readonly calculate_table = {
+
+        /**
+        * Calculates summuation of each row/colmun and Appends the results as a new row/colmun 
+        * 
+        * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
+        * @param {string} [label] : Optional. If omitted, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
+        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        */
         sum: ( async (
                 formula_call: SingleFormulaOptions,
                 basic_options?: {delete?:boolean, inspect?:boolean}
@@ -188,6 +223,16 @@ export class TableManipulator {
                 return await this.#add_formula({"calls":["SUM"], append, "labels":[label ?? "Sum"], not_apply_to, max, min}, basic_options)
             }),
 
+        /**
+        * Calculates average of each row/colmun and Appends the results as a new row/colmun 
+        * 
+        * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
+        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
+        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        */
         average: ( async (
                 formula_call: SingleFormulaOptions,
                 basic_options?: {delete?:boolean, inspect?:boolean}
@@ -196,6 +241,16 @@ export class TableManipulator {
                 return await this.#add_formula({"calls":["AVERAGE"], append, "labels":[label ?? "Average"], not_apply_to, max, min}, basic_options)
             }),
 
+        /**
+        * Counts of each row/colmun's cell and Appends the results as a new row/colmun 
+        * 
+        * @param {"newRow"|"newColumn"} append : Append an each-column-count row, or an each-row-count colmun.
+        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Couting is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Counting ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
+        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        */
         count: ( async (
                 formula_call: SingleFormulaOptions,
                 basic_options?: {delete?:boolean, inspect?:boolean}
@@ -203,7 +258,17 @@ export class TableManipulator {
                 const {append, label, not_apply_to, max, min } = formula_call
                 return await this.#add_formula({"calls":["COUNT"], append, "labels":[label ?? "Count"], not_apply_to, max, min}, basic_options)
             }),
-        
+
+        /**
+        * Calculates maximum of each row/colmun and Appends the results as a new row/colmun 
+        * 
+        * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
+        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
+        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        */
         max: ( async (
                 formula_call: SingleFormulaOptions,
                 basic_options?: {delete?:boolean, inspect?:boolean}
@@ -212,6 +277,16 @@ export class TableManipulator {
                 return await this.#add_formula({"calls":["MAX"], append, "labels":[label ?? "Max"], not_apply_to, max, min}, basic_options)
             }),
 
+        /**
+        * Calculates second maximum of each row/colmun and Appends the results as a new row/colmun 
+        * 
+        * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
+        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
+        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        */
         second_max: ( async (
                 formula_call: SingleFormulaOptions,
                 basic_options?: {delete?:boolean, inspect?:boolean}
@@ -220,6 +295,16 @@ export class TableManipulator {
                 return await this.#add_formula({"calls":["SECONDMAX"], append, "labels":[label ?? "2nd Max"], not_apply_to, max, min}, basic_options)
             }),
 
+        /**
+        * Calculates maximum of each row/colmun and Appends these cell's column/row-labels as a new row/colmun 
+        * 
+        * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
+        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
+        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        */
         max_name: ( async (
                 formula_call: SingleFormulaOptions,
                 basic_options?: {delete?:boolean, inspect?:boolean}
@@ -228,6 +313,16 @@ export class TableManipulator {
                 return await this.#add_formula({"calls":["MAXNAME"], append, "labels":[label ?? "Max(name)"], not_apply_to, max, min}, basic_options)
             }),
 
+        /**
+        * Calculates second maximum of each row/colmun and Appends these cell's column/row-labels as a new row/colmun 
+        * 
+        * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
+        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
+        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        */
         second_max_name: ( async (
                 formula_call: SingleFormulaOptions,
                 basic_options?: {delete?:boolean, inspect?:boolean}
@@ -236,6 +331,16 @@ export class TableManipulator {
                 return await this.#add_formula({"calls":["SECONDMAXNAME"], append, "labels":[label ?? "2nd Max(name)"], not_apply_to, max, min}, basic_options)
             }),
 
+        /**
+        * Calculates minimum of each row/colmun and Appends the results as a new row/colmun 
+        * 
+        * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
+        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
+        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        */            
         min: ( async (
                 formula_call: SingleFormulaOptions,
                 basic_options?: {delete?:boolean, inspect?:boolean}
@@ -244,6 +349,16 @@ export class TableManipulator {
                 return await this.#add_formula({"calls":["MIN"], append, "labels":[label ?? "Min"], not_apply_to, max, min}, basic_options)
             }),
 
+        /**
+        * Calculates second minimum of each row/colmun and Appends the results as a new row/colmun 
+        * 
+        * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
+        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
+        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        */   
         second_min: ( async (
                 formula_call: SingleFormulaOptions,
                 basic_options?: {delete?:boolean, inspect?:boolean}
@@ -252,6 +367,16 @@ export class TableManipulator {
                 return await this.#add_formula({"calls":["SECONDMIN"], append, "labels":[label ?? "2nd Min"], not_apply_to, max, min}, basic_options)
             }),
 
+        /**
+        * Calculates minimum of each row/colmun and Appends these cell's column/row-labels as a new row/colmun 
+        * 
+        * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
+        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
+        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        */   
         min_name: ( async (
                 formula_call: SingleFormulaOptions,
                 basic_options?: {delete?:boolean, inspect?:boolean}
@@ -260,6 +385,16 @@ export class TableManipulator {
                 return await this.#add_formula({"calls":["MINNAME"], append, "labels":[label ?? "Min(name)"], not_apply_to, max, min}, basic_options)
             }),
 
+        /**
+        * Calculates second minimum of each row/colmun and Appends these cell's column/row-labels as a new row/colmun 
+        * 
+        * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
+        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
+        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        */ 
         second_min_name: ( async (
                 formula_call: SingleFormulaOptions,
                 basic_options?: {delete?:boolean, inspect?:boolean}
@@ -268,16 +403,49 @@ export class TableManipulator {
                 return await this.#add_formula({"calls":["SECONDMINNAME"], append, "labels":[label ?? "2nd Min(name)"], not_apply_to, max, min}, basic_options)
             }),
 
+        /**
+        * Carries out multiple calculations. 
+        * 
+        * @param {Array<DirectedMultiFormulaOptions>} formula_calls : Array of the following params.
+        * 
+        * @param {Array<BasicFormula>} calls : List of calculation-method-names.
+        * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
+        * @param {Array<string>} [labels] : Optional. If omitted, calculation-method-names are used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
+        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        */ 
         multiple : ( async (
                 formula_calls: Array<DirectedMultiFormulaOptions>,
                 basic_options?: {delete?:boolean, inspect?:boolean}
             ) => { return await this.#add_formula_multi(formula_calls, basic_options) }),
-        
+
+        /**
+        * Carries out multiple calculations for each row and Appends the results as new colmuns.
+        * 
+        * @param {Array<BasicFormula>} calls : List of calculation-method-names.
+        * @param {Array<string>} [labels] : Optional. If omitted, calculation-method-names are used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
+        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        */ 
         multiple_col : ( async (
                 formula_call: NonDirectedMultiFormulaOptions,
                 basic_options?: {delete?:boolean, inspect?:boolean}
             ) => { return await this.#add_formula({"append":"newColumn", ...formula_call}, basic_options) }),
-        
+ 
+        /**
+        * Carries out multiple calculations for each column and Appends the results as new rows.
+        * 
+        * @param {Array<BasicFormula>} calls : List of calculation-method-names.
+        * @param {Array<string>} [labels] : Optional. If omitted, calculation-method-names are used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
+        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        */ 
         multimple_row : ( async (
             formula_call: NonDirectedMultiFormulaOptions,
                 basic_options?: {delete?:boolean, inspect?:boolean}
@@ -285,6 +453,12 @@ export class TableManipulator {
     }
 
 
+    /**
+    * Joins tables in the parent block to one table.
+    * 
+    * @param {calls: Array<ManipulateSet>} joint_options : Optional. Composited from followings.
+    * @param {Array<ManipulateSet>} calls : List of {func: funtion name, options: function options}. Listed funtions are carried out for the joined table. Transposition must be the first or last.
+    */ 
     public async join(
         joint_options? : {calls: Array<ManipulateSet>},
         basic_options?: {delete?:boolean, inspect?:boolean}
@@ -331,6 +505,11 @@ export class TableManipulator {
     }
 
 
+    /**
+    * Carrys out multiple functions for one table.
+    * 
+    * @param {Array<ManipulateSet>} calls : List of {func: funtion name, options: function options}. Listed funtions are carried out for the table. Transposition must be the first or last.
+    */ 
     public async multi_processing(
         calls : Array<ManipulateSet>,
         basic_options?: {delete?:boolean, inspect?:boolean}
@@ -363,6 +542,12 @@ export class TableManipulator {
     }
 
 
+    /**
+    * Separates one table to two or more.
+    * 
+    * @param {"by_blank"|"by_labels"|"by_number"} method : How to separate the table. By blank rows / row labels / number of rows.
+    * @param {null|{row_labels:Array<string>}|{number:number}} options : Details of separation. null / list of row labels / number.
+    */ 
     public async separate(
         options: SeparateOptions,
         basic_options?: {delete?:boolean, inspect?:boolean}
@@ -397,6 +582,13 @@ export class TableManipulator {
     }
 
 
+    /**
+    * Sorts the table's rows based on the cells' values in the specified column.
+    * 
+    * @param {string} label : The column's label where the cells' values are used for sorting.
+    * @param {boolean} as_int : Optional. Whether or not the cells' values are treated as number.
+    * @param {boolean} high_to_low : Optional. Whether descending or not.
+    */ 
     public async sort(
         options: SortOptions,
         basic_options?: {delete?:boolean, inspect?:boolean}
