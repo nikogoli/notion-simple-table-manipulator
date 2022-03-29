@@ -145,7 +145,7 @@ export class TableManipulator {
     * Adds row-number as a left-est cell to each rows.
     * 
     * @param {string} label
-    * @param {string} [text_format="{num}"] : Optional, default "{num}". {num} in this param is replaced to number.
+    * @param {string} [text_format="{num}"] : Optional, default "{num}". {num} in this param is replaced with number.
     * @param {string} [start_number=1] : Optional, default 1.
     * @param {string} [step=1] : Optional, default 1.
     */
@@ -456,7 +456,7 @@ export class TableManipulator {
     /**
     * Joins tables in the parent block to one table.
     * 
-    * @param {calls: Array<ManipulateSet>} joint_options : Optional. Composited from followings.
+    * @param {calls: Array<ManipulateSet>} joint_options : Optional. Composed from followings.
     * @param {Array<ManipulateSet>} calls : List of {func: funtion name, options: function options}. Listed funtions are carried out for the joined table. Transposition must be the first or last.
     */ 
     public async join(
@@ -583,7 +583,7 @@ export class TableManipulator {
 
 
     /**
-    * Sorts the table's rows based on the cells' values in the specified column.
+    * Sorts a table's rows based on the cells' values in the specified column.
     * 
     * @param {string} label : The column's label where the cells' values are used for sorting.
     * @param {boolean} as_int : Optional. Whether or not the cells' values are treated as number.
@@ -597,6 +597,10 @@ export class TableManipulator {
 }
 
 
+    /**
+    * Transoposes a table.
+    *   
+    */ 
     public async transpose(
         basic_options?: {delete?:boolean, inspect?:boolean}
     ): Promise<AppendBlockChildrenResponse> {
@@ -604,6 +608,10 @@ export class TableManipulator {
     }
 
 
+    /**
+    * Evaluates cells' texts as mathematical expressions and Replaces the texts with calculated results.
+    * 
+    */ 
     public async calculate_cell(
         basic_options?: {delete?:boolean, inspect?:boolean}
     ): Promise<AppendBlockChildrenResponse> {
@@ -612,6 +620,13 @@ export class TableManipulator {
 
 
     public readonly convert ={
+
+        /**
+        * Converts table's rows to notion's bulleted lists.
+        * 
+        * @param {string} cell_separation_by :  Each row's cells are joined using this param as separation.
+        * @param {string} [label_separation_by] :  Optional. If provided, each cell's text are joined with its column-label using this param as separation.
+        */ 
         to_list : ( async (
             options: ConvertToOptions,
             basic_options?: {delete?:boolean, inspect?:boolean}
@@ -645,6 +660,14 @@ export class TableManipulator {
             })
         }),
 
+        /**
+        * Converts notion's bulleted/numbered lists in the parent block to one table.
+        * 
+        * @param {boolean} use_header_row
+        * @param {boolean} use_header_col
+        * @param {string} cell_separation_by :  Each line-text is splited by this param
+        * @param {string} [label_separation_by] :  Optional. If provided, each text is splited by this param to column-label and cell-text
+        */
         from_list : ( async (
             options: ConvertFromOptions,
             basic_options?: {delete?:boolean, inspect?:boolean}
@@ -669,6 +692,14 @@ export class TableManipulator {
     }
 
 
+    /**
+    * Converts csv or JSON data to one table.
+    * 
+    * @param {string} path
+    * @param {boolean} use_header_row
+    * @param {boolean} use_header_colmun 
+    * @param {boolean} [jsonkey_as_cell] :  Optional, default false. Whether or not JSON's top keys are used as the first cell of each row.
+    */
     public async from_file(
         import_info: ImportOptions,
         basic_options?: {delete?:boolean, inspect?:boolean}
@@ -715,8 +746,8 @@ export class TableManipulator {
             // 更新した行データから、table block object を作成する
             const table_props = { "object": 'block', "type": "table", "has_children": true,
                 "table": { "table_width": text_mat[0].length,
-                    "has_column_header": import_info.set_header_row,
-                    "has_row_header": import_info.set_header_colmun,
+                    "has_column_header": import_info.use_header_row,
+                    "has_row_header": import_info.use_header_colmun,
                     "children": table_rows
                 }
             } as BlockObjectRequest
@@ -726,6 +757,11 @@ export class TableManipulator {
     }
 
 
+
+    /**
+    * The final process of each manipulation. Prints data then end / Appends data then / deletes old tables or just finishes.
+    * 
+    */
     async #append_or_inspect(
         data_list: Array<BlockObjectRequest>|Array<TableRowBlockObject>,
         id_list: Array<string> | null,
@@ -796,6 +832,10 @@ export class TableManipulator {
     }
 
 
+    /**
+    * Prepares just-one-direction calculation. Composes proper method-name, and Create labels for not-labeled rows/columns.
+    * 
+    */
     async #add_formula(
         formula_call : DirectedMultiFormulaOptions,
         basic_options?: {delete?:boolean, inspect?:boolean}
@@ -809,6 +849,10 @@ export class TableManipulator {
     }
 
 
+    /**
+    * Prepares rows and columns calculation.  Composes proper method-name, and Create labels for not-labeled rows/columns.
+    * 
+    */
     async #add_formula_multi(
         formula_calls: Array<{
             append: "newRow" | "newColumn",
@@ -829,6 +873,10 @@ export class TableManipulator {
     }
 
 
+    /**
+    * Uses notion API to Get notion's bulleted/numbered lists' data (and table's id if exists) in the parent block
+    * 
+    */
     async #get_lists(): Promise<{"texts_ids":Array<string>, "texts":Array<string>, "table_id":string}> {
         return await this.notion_with_id.blocks.children.list().then( (response) => {
             // 親要素以下の リスト要素を取得する
@@ -854,6 +902,10 @@ export class TableManipulator {
     }
 
 
+    /**
+    * Uses notion API to Get notion's tables and their rows' data in the parent block
+    * 
+    */
     async #get_tables_and_rows( ): Promise<TableResponse> {
        const tableinfo_list:Array<TableProps> = []
        const results_list: Array<Array<PartialBlockObjectResponse|BlockObjectResponse>> = []
@@ -895,6 +947,10 @@ export class TableManipulator {
     }
 
 
+    /**
+    * Carries out add-number & apply-color & calculate-table & caalculate-cells & sort & transpose.
+    * 
+    */
     #maltiple_manipulation (
         response: TableResponse,
         org_table_rows: Array<TableRowBlockObject>,
