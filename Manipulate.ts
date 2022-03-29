@@ -1,5 +1,6 @@
 import { Client } from "https://deno.land/x/notion_sdk/src/mod.ts";
 import {
+        ApiColor,
         AppendBlockChildrenParameters,
         AppendBlockChildrenResponse,
         BlockObjectResponse,
@@ -16,20 +17,15 @@ import {
 } from "https://deno.land/x/notion_sdk/src/api-endpoints.ts";
 
 import {
-    AppendFromOptions,
     ApplyColorOptions,
     BasicFormula,
     ConvertFromOptions,
-    ConvertToOptions,
     DirectedMultiFormulaOptions,
     FormulaCall,
     FormulaOptions,
-    ImportOptions,
     ManipulateSet,
     NumberingOptions,
-    NonDirectedMultiFormulaOptions,
     SeparateOptions,
-    SingleFormulaOptions,
     SortOptions,
     TableProps,
     TableResponse,
@@ -144,16 +140,31 @@ export class TableManipulator {
     /**
     * Adds row-number as a left-est cell to each rows.
     * 
-    * @param {string} label
+    * @param {string} [label=""] : Optional, default "".
     * @param {string} [text_format="{num}"] : Optional, default "{num}". {num} in this param is replaced with number.
     * @param {string} [start_number=1] : Optional, default 1.
     * @param {string} [step=1] : Optional, default 1.
     */
     public async add_number(
-        options: NumberingOptions = { "label":"", "text_format":"{num}", "start_number": 1, "step": 1},
+        numbering_options?:{
+            label?: string,
+            text_format?: string,
+            start_number?: number,
+            step?: number
+        },
         basic_options?: {delete?:boolean, inspect?:boolean}
     ): Promise<AppendBlockChildrenResponse> {
-        return await this.multi_processing([ {"func":"add_number", "options":options} ], basic_options)
+        const base_options = { label:"", text_format:"{num}", start_number:1, step: 1};
+        let options: Record<string, string|number|undefined> = {}
+        if (numbering_options === undefined) {
+            options = base_options
+        }
+        else {
+            (["label", "text_format", "start_number", "step"] as const).forEach( op => {
+                options[op] = (numbering_options[op]!==undefined) ? numbering_options[op] : base_options[op]
+            })
+        }
+        return await this.multi_processing([ {"func":"add_number", "options":options as NumberingOptions} ], basic_options)
     }
     
 
@@ -161,15 +172,18 @@ export class TableManipulator {
     * Adds rows to the table from lists in the same parent block.
     * 
     * @param {string} cell_separation_by :  Each line-text is splited by this param
-    * @param {string} [label_separation_by] :  Optional. Each text is splited by this param to column-label and cell-text
+    * @param {string} [label_separation_by] :  Optional. If provided, each text is splited by this param to column-label and cell-text
     */
     public async add_row_from_list(
-        options: AppendFromOptions,
+        appendfrom_options: {
+            cell_separation_by: string,
+            label_separation_by?: string
+        },
         basic_options?: {delete?:boolean, inspect?:boolean}
     ): Promise<AppendBlockChildrenResponse> {
         return await this.#get_lists().then(async (response) => {
             const {texts, table_id, texts_ids} = response
-            const {cell_separation_by, label_separation_by} = options
+            const {cell_separation_by, label_separation_by} = appendfrom_options
 
             // 文字列のリストからテーブル形式へ
             const table_rows = create_from_text(texts,
@@ -188,16 +202,22 @@ export class TableManipulator {
         * changes colors of max / min cells' texts in rows or colmuns in table
         * 
         * @param {"R"|"C"} direction : Calculates max/min for each row, or for each column
-        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Color-changes are not applied to listed rows/columns.
-        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Max/min-calculation ignores the cells of listed rows/colmuns.
-        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
-        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of labels or indices of rows/colmuns. If provided, color-changes are not applied to the cells of these rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of labels or indices of rows/colmuns. If provided, max-min-calculation ignores the cells of these rows/colmuns.
+        * @param {ApiColor} [max] : Optional. If proveided, the maximum-value text's color is changed to this.
+        * @param {ApiColor} [min] : Optional. If proveided, the minimum-value text's color is changed to this.
         */
-        maxmin : ( async ( 
-                options: ApplyColorOptions,
+        maxmin : ( async (
+                applycolor_options: {
+                    direction: "R"|"C",
+                    not_apply_to?: Array<string>|Array<number>,
+                    ignore?: Array<string>|Array<number>,
+                    max?: ApiColor,
+                    min?: ApiColor
+                },
                 basic_options?: {delete?:boolean, inspect?:boolean}
             ): Promise<AppendBlockChildrenResponse> => {
-                return await this.multi_processing( [ {"func":"apply_color", "options":options} ], basic_options)
+                return await this.multi_processing( [ {"func":"apply_color", "options":applycolor_options as ApplyColorOptions} ], basic_options)
             })
         //if : (() => {})
     }
@@ -209,255 +229,378 @@ export class TableManipulator {
         * Calculates summuation of each row/colmun and Appends the results as a new row/colmun 
         * 
         * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
-        * @param {string} [label] : Optional. If omitted, calculation-method-name is used.
-        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
-        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
-        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
-        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        * @param {string} [label] : Optional. If not provided, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of labels or indices of rows/colmuns. If provided, calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of labels or indices of rows/colmuns. If provided, calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. If proveided, the maximum-value text's color is changed to this.
+        * @param {ApiColor} [min] : Optional. If proveided, the minimum-value text's color is changed to this.
         */
         sum: ( async (
-                formula_call: SingleFormulaOptions,
+                singleformula_options:{
+                    append : "newRow" | "newColumn",
+                    label?: string,
+                    not_apply_to? : Array<string> | Array<number>,
+                    ignore? : Array<string> | Array<number>,
+                    max?: ApiColor,
+                    min?: ApiColor,
+                },
                 basic_options?: {delete?:boolean, inspect?:boolean}
-            ) => {
-                const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["SUM"], append, "labels":[label ?? "Sum"], not_apply_to, max, min}, basic_options)
+            ): Promise<AppendBlockChildrenResponse> => {
+                const options = {
+                    calls:["SUM" as const], labels:[singleformula_options.label ?? "Sum"],
+                    ...singleformula_options}
+                return await this.#add_formula(options, basic_options)
             }),
 
         /**
         * Calculates average of each row/colmun and Appends the results as a new row/colmun 
         * 
         * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
-        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
-        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
-        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
-        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
-        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        * @param {string} [label] : Optional. If not provided, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of labels or indices of rows/colmuns. If provided, calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of labels or indices of rows/colmuns. If provided, calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. If proveided, the maximum-value text's color is changed to this.
+        * @param {ApiColor} [min] : Optional. If proveided, the minimum-value text's color is changed to this.
         */
         average: ( async (
-                formula_call: SingleFormulaOptions,
+                singleformula_options:{
+                    append : "newRow" | "newColumn",
+                    label?: string,
+                    not_apply_to? : Array<string> | Array<number>,
+                    ignore? : Array<string> | Array<number>,
+                    max?: ApiColor,
+                    min?: ApiColor,
+                },
                 basic_options?: {delete?:boolean, inspect?:boolean}
-            ) => {
-                const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["AVERAGE"], append, "labels":[label ?? "Average"], not_apply_to, max, min}, basic_options)
+            ): Promise<AppendBlockChildrenResponse> => {
+                const options = {
+                    calls:["AVERAGE" as const], labels:[singleformula_options.label ?? "Average"],
+                    ...singleformula_options}
+                return await this.#add_formula(options, basic_options)
             }),
 
         /**
         * Counts of each row/colmun's cell and Appends the results as a new row/colmun 
         * 
         * @param {"newRow"|"newColumn"} append : Append an each-column-count row, or an each-row-count colmun.
-        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
-        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Couting is not applied to listed rows/columns.
-        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Counting ignores the cells of listed rows/colmuns.
-        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
-        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        * @param {string} [label] : Optional. If not provided, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of labels or indices of rows/colmuns. If provided, Couting is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of labels or indices of rows/colmuns. If provided, Counting ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. If proveided, the maximum-value text's color is changed to this.
+        * @param {ApiColor} [min] : Optional. If proveided, the minimum-value text's color is changed to this.
         */
         count: ( async (
-                formula_call: SingleFormulaOptions,
+                singleformula_options:{
+                    append : "newRow" | "newColumn",
+                    label?: string,
+                    not_apply_to? : Array<string> | Array<number>,
+                    ignore? : Array<string> | Array<number>,
+                    max?: ApiColor,
+                    min?: ApiColor,
+                },
                 basic_options?: {delete?:boolean, inspect?:boolean}
-            ) => {
-                const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["COUNT"], append, "labels":[label ?? "Count"], not_apply_to, max, min}, basic_options)
+            ): Promise<AppendBlockChildrenResponse> => {
+                const options = {
+                    calls:["COUNT" as const], labels:[singleformula_options.label ?? "Count"],
+                    ...singleformula_options}
+                return await this.#add_formula(options, basic_options)
             }),
 
         /**
         * Calculates maximum of each row/colmun and Appends the results as a new row/colmun 
         * 
         * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
-        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
-        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
-        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
-        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
-        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        * @param {string} [label] : Optional. If not provided, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of labels or indices of rows/colmuns. If provided, calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of labels or indices of rows/colmuns. If provided, calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. If proveided, the maximum-value text's color is changed to this.
+        * @param {ApiColor} [min] : Optional. If proveided, the minimum-value text's color is changed to this.
         */
         max: ( async (
-                formula_call: SingleFormulaOptions,
+                singleformula_options:{
+                    append : "newRow" | "newColumn",
+                    label?: string,
+                    not_apply_to? : Array<string> | Array<number>,
+                    ignore? : Array<string> | Array<number>,
+                    max?: ApiColor,
+                    min?: ApiColor,
+                },
                 basic_options?: {delete?:boolean, inspect?:boolean}
-            ) => {
-                const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["MAX"], append, "labels":[label ?? "Max"], not_apply_to, max, min}, basic_options)
+            ): Promise<AppendBlockChildrenResponse> => {
+                const options = {
+                    calls:["MAX" as const], labels:[singleformula_options.label ?? "Max"],
+                    ...singleformula_options}
+                return await this.#add_formula(options, basic_options)
             }),
 
         /**
         * Calculates second maximum of each row/colmun and Appends the results as a new row/colmun 
         * 
         * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
-        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
-        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
-        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
-        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
-        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        * @param {string} [label] : Optional. If not provided, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of labels or indices of rows/colmuns. If provided, calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of labels or indices of rows/colmuns. If provided, calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. If proveided, the maximum-value text's color is changed to this.
+        * @param {ApiColor} [min] : Optional. If proveided, the minimum-value text's color is changed to this.
         */
         second_max: ( async (
-                formula_call: SingleFormulaOptions,
+                singleformula_options:{
+                    append : "newRow" | "newColumn",
+                    label?: string,
+                    not_apply_to? : Array<string> | Array<number>,
+                    ignore? : Array<string> | Array<number>,
+                    max?: ApiColor,
+                    min?: ApiColor,
+                },
                 basic_options?: {delete?:boolean, inspect?:boolean}
-            ) => {
-                const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["SECONDMAX"], append, "labels":[label ?? "2nd Max"], not_apply_to, max, min}, basic_options)
+            ): Promise<AppendBlockChildrenResponse> => {
+                const options = {
+                    calls:["SECONDMAX" as const], labels:[singleformula_options.label ?? "2nd Max"],
+                    ...singleformula_options}
+                return await this.#add_formula(options, basic_options)
             }),
 
         /**
         * Calculates maximum of each row/colmun and Appends these cell's column/row-labels as a new row/colmun 
         * 
         * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
-        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
-        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
-        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
-        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
-        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        * @param {string} [label] : Optional. If not provided, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of labels or indices of rows/colmuns. If provided, calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of labels or indices of rows/colmuns. If provided, calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. If proveided, the maximum-value text's color is changed to this.
+        * @param {ApiColor} [min] : Optional. If proveided, the minimum-value text's color is changed to this.
         */
         max_name: ( async (
-                formula_call: SingleFormulaOptions,
+                singleformula_options:{
+                    append : "newRow" | "newColumn",
+                    label?: string,
+                    not_apply_to? : Array<string> | Array<number>,
+                    ignore? : Array<string> | Array<number>,
+                    max?: ApiColor,
+                    min?: ApiColor,
+                },
                 basic_options?: {delete?:boolean, inspect?:boolean}
-            ) => {
-                const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["MAXNAME"], append, "labels":[label ?? "Max(name)"], not_apply_to, max, min}, basic_options)
+            ): Promise<AppendBlockChildrenResponse> => {
+                const options = {
+                    calls:["MAXNAME" as const], labels:[singleformula_options.label ?? "Max(name)"],
+                    ...singleformula_options}
+                return await this.#add_formula(options, basic_options)
             }),
 
         /**
         * Calculates second maximum of each row/colmun and Appends these cell's column/row-labels as a new row/colmun 
         * 
         * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
-        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
-        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
-        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
-        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
-        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        * @param {string} [label] : Optional. If not provided, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of labels or indices of rows/colmuns. If provided, calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of labels or indices of rows/colmuns. If provided, calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. If proveided, the maximum-value text's color is changed to this.
+        * @param {ApiColor} [min] : Optional. If proveided, the minimum-value text's color is changed to this.
         */
         second_max_name: ( async (
-                formula_call: SingleFormulaOptions,
+                singleformula_options:{
+                    append : "newRow" | "newColumn",
+                    label?: string,
+                    not_apply_to? : Array<string> | Array<number>,
+                    ignore? : Array<string> | Array<number>,
+                    max?: ApiColor,
+                    min?: ApiColor,
+                },
                 basic_options?: {delete?:boolean, inspect?:boolean}
-            ) => {
-                const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["SECONDMAXNAME"], append, "labels":[label ?? "2nd Max(name)"], not_apply_to, max, min}, basic_options)
+            ): Promise<AppendBlockChildrenResponse> => {
+                const options = {
+                    calls:["SECONDMAXNAME" as const], labels:[singleformula_options.label ?? "2nd Max(name)"],
+                    ...singleformula_options}
+                return await this.#add_formula(options, basic_options)
             }),
 
         /**
         * Calculates minimum of each row/colmun and Appends the results as a new row/colmun 
         * 
         * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
-        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
-        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
-        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
-        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
-        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        * @param {string} [label] : Optional. If not provided, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of labels or indices of rows/colmuns. If provided, calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of labels or indices of rows/colmuns. If provided, calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. If proveided, the maximum-value text's color is changed to this.
+        * @param {ApiColor} [min] : Optional. If proveided, the minimum-value text's color is changed to this.
         */            
         min: ( async (
-                formula_call: SingleFormulaOptions,
+                singleformula_options:{
+                    append : "newRow" | "newColumn",
+                    label?: string,
+                    not_apply_to? : Array<string> | Array<number>,
+                    ignore? : Array<string> | Array<number>,
+                    max?: ApiColor,
+                    min?: ApiColor,
+                },
                 basic_options?: {delete?:boolean, inspect?:boolean}
-            ) => {
-                const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["MIN"], append, "labels":[label ?? "Min"], not_apply_to, max, min}, basic_options)
+            ): Promise<AppendBlockChildrenResponse> => {
+                const options = {
+                    calls:["MIN" as const], labels:[singleformula_options.label ?? "Min"],
+                    ...singleformula_options}
+                return await this.#add_formula(options, basic_options)
             }),
 
         /**
         * Calculates second minimum of each row/colmun and Appends the results as a new row/colmun 
         * 
         * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
-        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
-        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
-        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
-        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
-        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        * @param {string} [label] : Optional. If not provided, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of labels or indices of rows/colmuns. If provided, calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of labels or indices of rows/colmuns. If provided, calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. If proveided, the maximum-value text's color is changed to this.
+        * @param {ApiColor} [min] : Optional. If proveided, the minimum-value text's color is changed to this.
         */   
         second_min: ( async (
-                formula_call: SingleFormulaOptions,
+                singleformula_options:{
+                    append : "newRow" | "newColumn",
+                    label?: string,
+                    not_apply_to? : Array<string> | Array<number>,
+                    ignore? : Array<string> | Array<number>,
+                    max?: ApiColor,
+                    min?: ApiColor,
+                },
                 basic_options?: {delete?:boolean, inspect?:boolean}
-            ) => {
-                const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["SECONDMIN"], append, "labels":[label ?? "2nd Min"], not_apply_to, max, min}, basic_options)
+            ): Promise<AppendBlockChildrenResponse> => {
+                const options = {
+                    calls:["SECONDMIN" as const], labels:[singleformula_options.label ?? "2nd Min"],
+                    ...singleformula_options}
+                return await this.#add_formula(options, basic_options)
             }),
 
         /**
         * Calculates minimum of each row/colmun and Appends these cell's column/row-labels as a new row/colmun 
         * 
         * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
-        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
-        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
-        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
-        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
-        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        * @param {string} [label] : Optional. If not provided, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of labels or indices of rows/colmuns. If provided, calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of labels or indices of rows/colmuns. If provided, calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. If proveided, the maximum-value text's color is changed to this.
+        * @param {ApiColor} [min] : Optional. If proveided, the minimum-value text's color is changed to this.
         */   
         min_name: ( async (
-                formula_call: SingleFormulaOptions,
+                singleformula_options:{
+                    append : "newRow" | "newColumn",
+                    label?: string,
+                    not_apply_to? : Array<string> | Array<number>,
+                    ignore? : Array<string> | Array<number>,
+                    max?: ApiColor,
+                    min?: ApiColor,
+                },
                 basic_options?: {delete?:boolean, inspect?:boolean}
-            ) => {
-                const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["MINNAME"], append, "labels":[label ?? "Min(name)"], not_apply_to, max, min}, basic_options)
+            ): Promise<AppendBlockChildrenResponse> => {
+                const options = {
+                    calls:["MINNAME" as const], labels:[singleformula_options.label ?? "Min(name)"],
+                    ...singleformula_options}
+                return await this.#add_formula(options, basic_options)
             }),
 
         /**
         * Calculates second minimum of each row/colmun and Appends these cell's column/row-labels as a new row/colmun 
         * 
         * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
-        * @param {string} [label] : Optional.  If omitted, calculation-method-name is used.
-        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
-        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
-        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
-        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        * @param {string} [label] : Optional. If not provided, calculation-method-name is used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of labels or indices of rows/colmuns. If provided, calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of labels or indices of rows/colmuns. If provided, calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. If proveided, the maximum-value text's color is changed to this.
+        * @param {ApiColor} [min] : Optional. If proveided, the minimum-value text's color is changed to this.
         */ 
         second_min_name: ( async (
-                formula_call: SingleFormulaOptions,
+                singleformula_options:{
+                    append : "newRow" | "newColumn",
+                    label?: string,
+                    not_apply_to? : Array<string> | Array<number>,
+                    ignore? : Array<string> | Array<number>,
+                    max?: ApiColor,
+                    min?: ApiColor,
+                },
                 basic_options?: {delete?:boolean, inspect?:boolean}
-            ) => {
-                const {append, label, not_apply_to, max, min } = formula_call
-                return await this.#add_formula({"calls":["SECONDMINNAME"], append, "labels":[label ?? "2nd Min(name)"], not_apply_to, max, min}, basic_options)
+            ): Promise<AppendBlockChildrenResponse> => {
+                const options = {
+                    calls:["SECONDMINNAME" as const], labels:[singleformula_options.label ?? "2nd Min(name)"],
+                    ...singleformula_options}
+                return await this.#add_formula(options, basic_options)
             }),
 
         /**
         * Carries out multiple calculations. 
         * 
         * @param {Array<DirectedMultiFormulaOptions>} formula_calls : Array of the following params.
-        * 
         * @param {Array<BasicFormula>} calls : List of calculation-method-names.
         * @param {"newRow"|"newColumn"} append : Append an each-columns-calculated-result row, or an each-rows-calculated-result colmun.
-        * @param {Array<string>} [labels] : Optional. If omitted, calculation-method-names are used.
-        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
-        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
-        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
-        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        * @param {Array<string>} [labels] : Optional. If not provided, calculation-method-names are used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of labels or indices of rows/colmuns. If provided, calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of labels or indices of rows/colmuns. If provided, calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. If proveided, the maximum-value text's color is changed to this.
+        * @param {ApiColor} [min] : Optional. If proveided, the minimum-value text's color is changed to this.
         */ 
         multiple : ( async (
                 formula_calls: Array<DirectedMultiFormulaOptions>,
                 basic_options?: {delete?:boolean, inspect?:boolean}
-            ) => { return await this.#add_formula_multi(formula_calls, basic_options) }),
+            ): Promise<AppendBlockChildrenResponse> => { return await this.#add_formula_multi(formula_calls, basic_options) }),
 
         /**
         * Carries out multiple calculations for each row and Appends the results as new colmuns.
         * 
         * @param {Array<BasicFormula>} calls : List of calculation-method-names.
-        * @param {Array<string>} [labels] : Optional. If omitted, calculation-method-names are used.
-        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
-        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
-        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
-        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        * @param {Array<string>} [labels] : Optional. If not provided, calculation-method-names are used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of labels or indices of rows/colmuns. If provided, calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of labels or indices of rows/colmuns. If provided, calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. If proveided, the maximum-value text's color is changed to this.
+        * @param {ApiColor} [min] : Optional. If proveided, the minimum-value text's color is changed to this.
         */ 
         multiple_col : ( async (
-                formula_call: NonDirectedMultiFormulaOptions,
+                nondirectformula_options: {
+                    calls: BasicFormula[];
+                    labels?: string[] | undefined;
+                    not_apply_to?: string[] | number[] | undefined;
+                    ignore?: string[] | number[] | undefined;
+                    max?: ApiColor | undefined;
+                    min?: ApiColor | undefined;
+                },
                 basic_options?: {delete?:boolean, inspect?:boolean}
-            ) => { return await this.#add_formula({"append":"newColumn", ...formula_call}, basic_options) }),
+            ): Promise<AppendBlockChildrenResponse> => {
+                const options = {
+                    "append":"newColumn" as const,
+                    ...nondirectformula_options
+                }
+                return await this.#add_formula(options, basic_options)
+            }),
  
         /**
         * Carries out multiple calculations for each column and Appends the results as new rows.
         * 
         * @param {Array<BasicFormula>} calls : List of calculation-method-names.
-        * @param {Array<string>} [labels] : Optional. If omitted, calculation-method-names are used.
-        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of rows/colmuns' labels or indices. Calculation is not applied to listed rows/columns.
-        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of rows/colmuns' labels or indices. Calculation ignores the cells of listed rows/colmuns.
-        * @param {ApiColor} [max] : Optional. The color of Maximum-value text.
-        * @param {ApiColor} [min] : Optional. The color of Minimum-value text.
+        * @param {Array<string>} [labels] : Optional. If not provided, calculation-method-names are used.
+        * @param {Array<string>|Array<number>} [not_apply_to] : Optional. List of labels or indices of rows/colmuns. If provided, calculation is not applied to listed rows/columns.
+        * @param {Array<string>|Array<number>} [ignore] : Opitional. List of labels or indices of rows/colmuns. If provided, calculation ignores the cells of listed rows/colmuns.
+        * @param {ApiColor} [max] : Optional. If proveided, the maximum-value text's color is changed to this.
+        * @param {ApiColor} [min] : Optional. If proveided, the minimum-value text's color is changed to this.
         */ 
         multimple_row : ( async (
-            formula_call: NonDirectedMultiFormulaOptions,
+                nondirectformula_options: {
+                    calls: BasicFormula[];
+                    labels?: string[] | undefined;
+                    not_apply_to?: string[] | number[] | undefined;
+                    ignore?: string[] | number[] | undefined;
+                    max?: ApiColor | undefined;
+                    min?: ApiColor | undefined;
+                },
                 basic_options?: {delete?:boolean, inspect?:boolean}
-            ) => { return await this.#add_formula({"append":"newRow", ...formula_call}, basic_options) }),
+            ): Promise<AppendBlockChildrenResponse> => {
+                const options = {
+                    "append":"newRow" as const,
+                    ...nondirectformula_options
+                }
+                return await this.#add_formula(options, basic_options)
+            }),
     }
 
 
     /**
     * Joins tables in the parent block to one table.
     * 
-    * @param {calls: Array<ManipulateSet>} joint_options : Optional. Composed from followings.
-    * @param {Array<ManipulateSet>} calls : List of {func: funtion name, options: function options}. Listed funtions are carried out for the joined table. Transposition must be the first or last.
+    * @param {Array<ManipulateSet>} [calls] : Optional. List of {func: funtion name, options: function options}. If provided, listed funtions are carried out for the joined table. If carry out transposition, it must be the first or last.
     */ 
     public async join(
         joint_options? : {calls: Array<ManipulateSet>},
@@ -545,11 +688,14 @@ export class TableManipulator {
     /**
     * Separates one table to two or more.
     * 
-    * @param {"by_blank"|"by_labels"|"by_number"} method : How to separate the table. By blank rows / row labels / number of rows.
-    * @param {null|{row_labels:Array<string>}|{number:number}} options : Details of separation. null / list of row labels / number.
+    * @param {"by_blank"|"by_labels"|"by_number"} method : How to separate the table. By blank rows, or specific row labels, or fixed number of rows.
+    * @param {null|{row_labels:Array<string>}|{number:number}} options : Details of separation. null, or list of row labels, or number of each new table's rows.
     */ 
     public async separate(
-        options: SeparateOptions,
+        separate_options: 
+            { method: "by_blank"; options: null} | 
+            { method: "by_number"; options: { number: number }} | 
+            { method: "by_labels"; options: { row_labels: Array<string>}},
         basic_options?: {delete?:boolean, inspect?:boolean}
     ): Promise<AppendBlockChildrenResponse> {
             
@@ -561,7 +707,7 @@ export class TableManipulator {
             const default_rowidx = (response.tableinfo_list[0].has_column_header) ? 1 : 0
 
             // テーブル(の行データ)を複数のリストに分割する
-            const tables = separate_table(org_rowobjs_list, options, default_rowidx)
+            const tables = separate_table(org_rowobjs_list, separate_options as SeparateOptions, default_rowidx)
 
             // それぞれのリストごとに table block object を作る
             const table_props_list = tables.map(rows => {
@@ -586,15 +732,19 @@ export class TableManipulator {
     * Sorts a table's rows based on the cells' values in the specified column.
     * 
     * @param {string} label : The column's label where the cells' values are used for sorting.
-    * @param {boolean} as_int : Optional. Whether or not the cells' values are treated as number.
-    * @param {boolean} high_to_low : Optional. Whether descending or not.
+    * @param {boolean} [as_int=true] : Optional, default true. If false, the cells' values are not treated as number when compared.
+    * @param {boolean} [high_to_low=true] : Optional, default true. If false, ascending sort is used.
     */ 
     public async sort(
-        options: SortOptions,
+        sort_options: {
+            label: string,
+            as_int?: boolean,
+            high_to_low?: boolean,
+        },
         basic_options?: {delete?:boolean, inspect?:boolean}
-): Promise<AppendBlockChildrenResponse> {
-    return await this.multi_processing( [ {"func":"sort", "options":options} ], basic_options )
-}
+    ): Promise<AppendBlockChildrenResponse> {
+        return await this.multi_processing( [ {"func":"sort", "options":sort_options as SortOptions} ], basic_options )
+    }
 
 
     /**
@@ -628,7 +778,10 @@ export class TableManipulator {
         * @param {string} [label_separation_by] :  Optional. If provided, each cell's text are joined with its column-label using this param as separation.
         */ 
         to_list : ( async (
-            options: ConvertToOptions,
+            convertto_options: {
+                label_separation_by?: string | undefined,
+                cell_separation_by: string
+            },
             basic_options?: {delete?:boolean, inspect?:boolean}
         ): Promise<AppendBlockChildrenResponse> =>  {
             return await this.#get_tables_and_rows()
@@ -641,15 +794,15 @@ export class TableManipulator {
                     row => row.table_row.cells.map(cell => (cell.length) ? cell.map(c => c.plain_text).join() : "" )
                 )
                 let formatted_text: Array<Array<string>>
-                if (options.label_separation_by) {
-                    const sep = options.label_separation_by
+                if (convertto_options.label_separation_by) {
+                    const sep = convertto_options.label_separation_by
                     const labels = text_mat[0]
                     formatted_text = text_mat.slice(1).map(row => row.map( (t,idx) => labels[idx]+sep+t) )
                 } else {
                     formatted_text = text_mat
                 }
 
-                const list_items = formatted_text.map(row => row.join(options.cell_separation_by)).map(tx => {
+                const list_items = formatted_text.map(row => row.join(convertto_options.cell_separation_by)).map(tx => {
                     return {
                         "object":"block", "type": "bulleted_list_item",
                         "bulleted_list_item":{"rich_text": set_celldata_obj("text", tx)}
@@ -669,19 +822,24 @@ export class TableManipulator {
         * @param {string} [label_separation_by] :  Optional. If provided, each text is splited by this param to column-label and cell-text
         */
         from_list : ( async (
-            options: ConvertFromOptions,
+            convertfrom_options: {
+                use_header_row: boolean,
+                use_header_col: boolean,
+                cell_separation_by: string,
+                label_separation_by?: string,
+            },
             basic_options?: {delete?:boolean, inspect?:boolean}
         ): Promise<AppendBlockChildrenResponse> => {
             return await this.#get_lists().then(async (response) => {
                 const {texts} = response
         
                 // 文字列のリストからテーブル形式へ
-                const table_rows = create_from_text(texts, options)
+                const table_rows = create_from_text(texts, convertfrom_options as ConvertFromOptions)
         
                 const table_props = { "object": 'block', "type": "table", "has_children": true,
                     "table": { "table_width": table_rows[0].table_row.cells.length,
-                        "has_column_header": options.use_header_row ,
-                        "has_row_header": options.use_header_col,
+                        "has_column_header": convertfrom_options.use_header_row ,
+                        "has_row_header": convertfrom_options.use_header_col,
                         "children": table_rows
                     }
                 } as BlockObjectRequest
@@ -701,15 +859,20 @@ export class TableManipulator {
     * @param {boolean} [jsonkey_as_cell] :  Optional, default false. Whether or not JSON's top keys are used as the first cell of each row.
     */
     public async from_file(
-        import_info: ImportOptions,
+        import_options: {
+            path: string,
+            use_header_row: boolean,
+            use_header_colmun: boolean,
+            jsonkey_as_cell?: boolean
+        },
         basic_options?: {delete?:boolean, inspect?:boolean}
     ): Promise<AppendBlockChildrenResponse> {
-        const file_name = import_info.path.split("/").reverse()[0]
+        const file_name = import_options.path.split("/").reverse()[0]
         if (!file_name.endsWith(".csv")  && !file_name.endsWith(".json")) {
             throw new Error("ファイルが正しく指定されていません")
         }
     
-        return await Deno.readTextFile(import_info.path).then( async (imported_text) => {
+        return await Deno.readTextFile(import_options.path).then( async (imported_text) => {
             let text_mat: Array<Array<string>> = [[""]]
             if (file_name.endsWith(".csv")) {
                 // csv から、テキストの行列を作成
@@ -723,7 +886,7 @@ export class TableManipulator {
     
                 const row_records = Object.values(j_data).map( (ob, idx) => {
                     const new_kvs = Object.entries(ob as Record<string, unknown>).map( ([k,v]) => [k, String(v)] )
-                    if (import_info.jsonkey_as_cell!==undefined && import_info.jsonkey_as_cell == true) {
+                    if (import_options.jsonkey_as_cell!==undefined && import_options.jsonkey_as_cell == true) {
                         return Object.fromEntries([ ["", j_data_keys[idx]], ...new_kvs ]) as Record<string, string>
                     } else {
                         return Object.fromEntries(new_kvs) as Record<string, string>
@@ -746,8 +909,8 @@ export class TableManipulator {
             // 更新した行データから、table block object を作成する
             const table_props = { "object": 'block', "type": "table", "has_children": true,
                 "table": { "table_width": text_mat[0].length,
-                    "has_column_header": import_info.use_header_row,
-                    "has_row_header": import_info.use_header_colmun,
+                    "has_column_header": import_options.use_header_row,
+                    "has_row_header": import_options.use_header_colmun,
                     "children": table_rows
                 }
             } as BlockObjectRequest
@@ -877,7 +1040,8 @@ export class TableManipulator {
     * Uses notion API to Get notion's bulleted/numbered lists' data (and table's id if exists) in the parent block
     * 
     */
-    async #get_lists(): Promise<{"texts_ids":Array<string>, "texts":Array<string>, "table_id":string}> {
+    async #get_lists(
+    ): Promise<{"texts_ids":Array<string>, "texts":Array<string>, "table_id":string}> {
         return await this.notion_with_id.blocks.children.list().then( (response) => {
             // 親要素以下の リスト要素を取得する
             const texts: Array<string> = []
@@ -906,7 +1070,8 @@ export class TableManipulator {
     * Uses notion API to Get notion's tables and their rows' data in the parent block
     * 
     */
-    async #get_tables_and_rows( ): Promise<TableResponse> {
+    async #get_tables_and_rows(
+    ): Promise<TableResponse> {
        const tableinfo_list:Array<TableProps> = []
        const results_list: Array<Array<PartialBlockObjectResponse|BlockObjectResponse>> = []
 
