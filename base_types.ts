@@ -113,8 +113,8 @@ export type ConvertToOptions = Omit<ConvertFromOptions, "use_header_row"|"use_he
 // csv や json からテーブルを作るの設定をまとめたもの
 export interface ImportOptions {
     path: string
-    set_header_row: boolean
-    set_header_colmun: boolean
+    use_header_row: boolean
+    use_header_colmun: boolean
     jsonkey_as_cell?: boolean
 }
 
