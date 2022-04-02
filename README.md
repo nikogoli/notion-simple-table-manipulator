@@ -2,7 +2,7 @@
  notion API (を使う [notion_sdk](https://deno.land/x/notion_sdk)) を利用した simple table の操作を簡便化するための関数群 for deno
  
  ## できること
-[example](example/example.md) を参照のこと
+[example](example/example.md) あるいは [Document](Manipulate.md) を参照のこと
 
  1. 行を並び替える
  1. 行に連番を振る
